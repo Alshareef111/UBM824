@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Large raw data (regenerable from Databento)
+data/raw/*.csv
+data/raw/*.txt
+
+# Generated outputs (regenerable from src/)
+data/processed/*.parquet
+results/charts/*.png
+results/archive/*.parquet
+
+# OS files
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
