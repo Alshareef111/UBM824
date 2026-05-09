@@ -1,3 +1,20 @@
+# IMPORTANT — read these files NOW before responding to anything
+
+Before answering ANY user request in this project, read these files in order:
+1. docs/strategy-spec.md (the locked rules)
+2. docs/decisions.md (why each rule exists)
+3. docs/results-log.md (what has already been tested)
+
+After reading, internalize:
+- The locked baseline is 526 trades, 52.9% win rate, +$1,975. Do NOT overwrite data/processed/trades.parquet.
+- All paths come from src/paths.py. Never use Path(__file__).parent.
+- New experiments save to results/archive/ with descriptive names.
+- After any experiment, append an R-XXX entry to docs/results-log.md.
+
+Only after reading those three files should you respond to the user's actual request. Do not skip this step even if the request seems simple.
+
+---
+
 # MNQ ORB-Cluster Mean-Reversion Strategy Backtest
 
 ## What this project is
