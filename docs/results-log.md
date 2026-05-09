@@ -30,6 +30,7 @@ This document records every parameter configuration tested, with the resulting p
 - Worst month: 2025-05 -$695 (41 trades, 34.1% WR)
 - Profitable months: 12 of 24
 - Notes: This is the locked baseline. trades.parquet in data/processed/ corresponds to this config.
+- Tick-truth caveat: Bar-sim result +$1,975 confirmed mechanically, but tick verification on 2026-03-17 to 2026-04-15 (32 trades) showed bar-sim overstated P&L by ~100% on that slice. Full-period tick verification not yet performed; projected true P&L could be near breakeven or modestly negative. See "Tick-based verification" section below and decisions.md D-014, D-015.
 
 ---
 
@@ -82,27 +83,29 @@ This document records every parameter configuration tested, with the resulting p
 
 ---
 
-## Tick-based verification (overlap period 2026-03-12 to 2026-05-01)
+## Tick-based verification (overlap period 2026-03-17 to 2026-04-15)
 
-- Period covered: 7 weeks of overlap with the M26 contract tick file
-- Bar-based result for same period (Config R-001): +$240 / 12 trades
-- Tick-based result for same period (Config R-001): different P&L due to:
-  - 2 phantom fills (limit appeared filled in bars but ticks show price never reached the limit)
-  - 5 same-bar chronology bugs (ambiguous bars where stop-first conservative was wrong)
-- Net effect: tick simulator showed strategy still profitable but ~$240 lower than bar simulator on the overlap.
-- Conclusion: bar-based backtest has small but real biases. Direction of bias: optimistic by ~$120 per phantom fill. Tick verification recommended for any production deployment.
+- Period covered: 4 weeks of overlap with the M26 contract tick file
+- Bar-based result for same period (Config R-001): +$240 / 32 trades
+- Tick-based result for same period (Config R-001): $0 / 32 trades — a 100% overstatement of edge by the bar simulator on this slice.
+- Three distinct bias mechanisms identified:
+  - Bug A (D-005): Same-bar stop+target ambiguity. When both stop and target lie within a single bar's range, the simulator applies the stop-first conservative rule. Affects ~1% of trades; flipping to target-first only changes total P&L by +$600. Direction: pessimistic.
+  - Bug B (D-014): Entry-bar chronology. On the entry bar, the simulator counts target/stop hit if bar.high/low crosses the level, even when that extreme occurred BEFORE the limit fill within the minute. Verified on 2026-04-08: bar opened above target (25128.75 > 25115.50), then fell to fill the buy limit at 25085.50, then continued down to stop at 25055.50. Simulator credited target; tick reality was stop. ~3% rate. Direction: optimistic.
+  - Phantom fills (D-015): ~6% rate (2 of 32 overlap trades). Cause: Databento OHLCV bar high includes non-trade prints (implied levels, RFQ quotes); NinjaTrader Last shows only executed trades. So the bar high can exceed any actually-traded price, making a limit appear filled in bar-sim when no real trade occurred at that price. Direction: optimistic.
+- Conclusion: Bar simulator has multiple known biases that net optimistic and compound to ~100% overstatement on this slice. Full-period tick verification remains pending. Tick verification is required for any production deployment.
 - Other R:R configs tested on ticks for the overlap period:
   - 30/30 (Config A, baseline): see above
   - 10/30 (1:3 R:R): tested, results in tick_simulator output
   - 15/30 (1:2 R:R): tested
   - 5/20 (1:4 R:R): tested
-- Notes on tick configs: with only 7 weeks and approximately 12 trades per config, statistical significance is very low. Treat as exploratory only. Full-history tick data not available.
+- Notes on tick configs: with only 4 weeks and ~32 trades for Config A (fewer for tighter-stop configs), statistical significance is very low. Treat as exploratory only. Full-history tick data not available.
 
 ---
 
 ## Robustness checks on baseline
 
 - Yearly P&L (see R-001 above): edge concentrated in 2024 and 2026 YTD; 2025 was flat-to-negative.
+- Visual market-regime finding: across 6 chart reviews (2024-08-02, 2024-12-20, 2025-01-08, 2025-02-27, 2026-04-02, 2026-04-08), the strategy clearly succeeds in range-bound days and fails in trending days. The 2025 weakness aligns with this — likely a more trending year than 2024 or 2026. Open research question (OQ-1) is whether a regime indicator (ATR / ADX / ORB-width-relative) can identify trending sessions before entry; risk: overfitting on a small sample.
 - Profit concentration: removing top 5 days reduced P&L significantly (specific number to be re-computed and added).
 - Look-ahead bias audit: passed. Today's ORB is computed at 9:45 from 9:30 to 9:45 bars only; trading begins at 9:46; no future information used.
 - Statistical significance: ~1.3 sigma above breakeven, p approximately 0.09. Edge cannot be distinguished from random noise at conventional thresholds.

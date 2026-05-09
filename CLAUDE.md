@@ -100,8 +100,7 @@ Tick verification pipeline (requires Google Drive synced for the tick file symli
 
 ## Current status
 
-- Bar-based backtest: locked baseline, fully verified.
-- Tick-based verification: built, identified approximately 240 dollars discrepancy in overlap period due to bar-level chronology errors (5 ambiguous bars). Strategy still profitable on ticks.
+- Bar-based backtest: bar-mechanics are reproducible (+$1,975 deterministic), but tick verification on the 2026-03-17 to 2026-04-15 overlap (32 trades) showed bar-sim overstated P&L by ~100% on that slice (bar +$240 vs tick $0). Two distinct optimistic biases identified — phantom fills from non-trade prints in OHLC (~6%) and entry-bar chronology errors (~3%) — partially offset by the pessimistic stop-first conservative rule (~1%). The headline +$1,975 is therefore materially optimistic; full-period tick truth could be near breakeven or modestly negative. See docs/decisions.md D-005, D-014, D-015 and the R-001 caveat in docs/results-log.md.
 - Multiple parameter sweeps tested (see docs/results-log.md). Original 3pt/30/30/MR-first remains the only profitable config.
-- 2025 was a flat-to-negative regime; 2024 and 2026 carried the edge.
+- 2025 was a flat-to-negative regime; 2024 and 2026 carried the edge. Visual review of 6 sessions (2024-08-02, 2024-12-20, 2025-01-08, 2025-02-27, 2026-04-02, 2026-04-08) shows the strategy succeeds in range-bound days and fails in trending days; 2025's weakness is consistent with that year being more trending.
 - Open question: regime detection (ATR or volatility filter) to skip 2025-like environments.

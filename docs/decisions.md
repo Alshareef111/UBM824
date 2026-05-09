@@ -14,6 +14,7 @@ Format: each entry has Date, Decision, Alternatives considered, Reasoning, and S
   - Ratio adjustment (multiplicative): preserves percentage moves but distorts absolute point distances, which would break a fixed 30-point stop.
   - No adjustment (raw contracts): would scatter ORB levels by 200+ points across rollovers, preventing meaningful clustering.
 - Reasoning: Strategy uses fixed point-distance stops and targets. Panama preserves point distances exactly, which is what the strategy depends on. Trade-off: absolute prices in the backtest do NOT match TradingView quotes for older periods. Verified the cumulative offset for the earliest contract MNQM4 was +1,912 points (a real price of 18,605 stored as 20,517).
+- Visual verification (2026-04-15): User visually verified the project's chart for 2026-04-15 against TradingView: candles, ORB times, cluster zones, and trading window timing all match. Confirms data integrity at the visual layer.
 - Status: locked
 
 ---
@@ -61,8 +62,8 @@ Format: each entry has Date, Decision, Alternatives considered, Reasoning, and S
   - Target-first optimistic: would overstate edge.
   - 50/50 random: unrealistic, adds noise.
   - Tick-level resolution: not available for the full backtest period.
-- Reasoning: Industry standard for bar-based backtests. Underestimates rather than overestimates strategy performance. Ambiguous bars are flagged in src/ambig_check.py. In the baseline, 5 trades were affected. Tick verification on the March to May 2026 overlap confirmed the conservative bias is small in absolute terms (~$240 across 5 affected trades).
-- Status: locked for bar-based simulation. Tick simulator uses chronological truth.
+- Reasoning: Industry standard for bar-based backtests. The rule biases the simulator pessimistically (assumes the worse outcome on ambiguous bars), so any error from this rule alone would understate edge. Ambiguous bars are flagged in src/ambig_check.py — 5 trades in the baseline (~1% of all trades). Counterfactual: flipping to target-first on those bars only changes total P&L by +$600. In the broader bar-vs-tick reconciliation, this is now framed as Bug A; it is small and pessimistic, dwarfed by two optimistic biases (Bug B entry-bar chronology — D-014 — and phantom fills — D-015). Net effect on the 2026-03-17 to 2026-04-15 tick-overlap (32 trades): bar +$240 vs tick $0, i.e. the optimistic biases dominated.
+- Status: locked for bar-based simulation as a deliberate pessimistic bias. Tick simulator uses chronological truth and is the source of truth where available.
 
 ---
 
@@ -156,6 +157,29 @@ Format: each entry has Date, Decision, Alternatives considered, Reasoning, and S
   - UTC throughout.
 - Reasoning: Strategy is defined in NY equity-market terms (9:30 to 9:45 cash open). DST handling is automatic via pytz/zoneinfo. Verified summer and winter sessions both produce ORB at the correct local time.
 - Status: locked
+
+---
+
+## D-014: Entry-bar chronology bug — target/stop credited even when bar's extreme preceded the fill
+
+- Date: 2026-04 (discovered during tick verification)
+- Decision: Document the bug; do not silently fix the bar simulator (the locked baseline corresponds to current bar behavior). Use the tick simulator as the source of truth where tick data is available.
+- Mechanism: On the entry bar, the simulator counts target or stop as hit if bar.high or bar.low crosses the level, regardless of WHEN within the minute the extreme occurred. If the bar's extreme precedes the limit fill, the credited exit is anachronistic — the entry had not happened yet when the extreme printed.
+- Worked example (2026-04-08, BUY limit): bar opened at 25128.75 (above target 25115.50), then fell through 25085.50 to fill the buy limit at 25085.50, then continued down to 25055.50 hitting the stop. Bar simulator credited the trade as a target win because bar.high >= target. Tick reality: target was reached BEFORE entry; the actual post-entry path was straight to stop.
+- Rate: approximately 3% of trades affected, observed during the 32-trade tick overlap.
+- Direction of bias: optimistic (credits wins that did not happen). Opposite of D-005 Bug A.
+- Status: known bug, not fixed in baseline. Bar simulator left as-is to keep the locked baseline reproducible. Use tick simulator for production-grade evaluation.
+
+---
+
+## D-015: Phantom fills — Databento OHLC bar high includes non-trade prints
+
+- Date: 2026-04 (discovered during tick verification)
+- Decision: Document the data-source artifact; do not modify the bar simulator (the locked baseline corresponds to current behavior). Use the tick simulator (NinjaTrader Last) as the source of truth where available.
+- Mechanism: Databento OHLCV-1m bar high/low can include non-executed prints — implied levels, RFQ quotes — not just actually-traded prices. NinjaTrader's "Last" tick stream shows only executed trades. So the bar high can exceed any price at which a real trade occurred. When the simulator checks "did bar.high reach the sell limit?", it can return True even when no real trade ever touched that price, producing a phantom fill.
+- Rate: approximately 6% of trades affected (2 of 32 in the 2026-03-17 to 2026-04-15 overlap window).
+- Direction of bias: optimistic (credits fills that did not happen at the limit price; the real subsequent path may not have been favorable).
+- Status: known data-source artifact, not patched. Bar simulator left as-is to keep the locked baseline reproducible. Use tick simulator for production-grade evaluation.
 
 ---
 
