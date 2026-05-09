@@ -11,9 +11,6 @@ data/processed/*.parquet
 results/charts/*.png
 results/archive/*.parquet
 
-# OS files
-.DS_Store
-
 # Editor
 .vscode/
 *.swp
