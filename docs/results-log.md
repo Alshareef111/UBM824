@@ -131,3 +131,103 @@ R-XXX: short title — gap / stop / target / direction-entry
 - Max drawdown: $ over N days
 - Notes: hypothesis tested, result interpretation, follow-up actions
 - Output file: results/archive/trades_<descriptor>.parquet
+
+---
+
+## R-006: Historical + forward dataset extension — fade-only 7-year OOS
+
+- Date tested: 2026-05-11
+- Config: 3.0 / 30 / 30 / MR-first (same as locked baseline), but on 7-year dataset (2019-05-06 → 2026-05-10)
+- Trades: 1,693
+- Win rate: 48.7% (824 W / 867 L / 2 flat)
+- P&L: −$3,377.50
+- Exits: target 736 / stop 798 / force_close 159
+- Period split:
+  - Historical OOS [2019-05-06, 2024-03-31]: 1,080 trades / 46.3% / **−$5,534.50** (loses in 5 of 6 years)
+  - In-sample [2024-04-01, 2026-05-01]: 613 trades / 52.9% / +$2,157.00 (+$182 vs locked baseline, from 87 extra trades during deque warm-up)
+  - Forward [2026-05-04, 2026-05-08]: 0 trades (MNQ rallied above 200-session level pool)
+- Yearly: 2019 −$1,732 / 2020 −$972 / 2021 +$86 / 2022 −$1,898 / 2023 −$959 / 2024 Q1 −$60 / 2024 Apr+ +$618 / 2025 −$82 / 2026 +$1,621
+- Output: `results/archive/trades_baseline_extended_20260511.parquet`
+- Cross-validation: trades with `entry_time >= 2025-02-01` byte-identical to locked baseline (`assert_frame_equal(check_exact=True)`); confirms multi-CSV pipeline is sound, OOS results are believable.
+- Verdict: locked baseline does not survive historical OOS. +$1,975 in-sample is regime-specific, not generalizable edge. Full details: `docs/research-log-2026-05-historical-extension.md`.
+
+---
+
+## R-007: Hybrid 30/30 — re-run on 7-year extended dataset
+
+- Date tested: 2026-05-11
+- Config: 3.0 / 30 / 30 / hybrid (fade if `|expected_norm_dist| > 0.09`, else reverse to breakout)
+- Trades: 1,693
+- Win rate: 49.9% (844 W / 847 L / 2 flat)
+- P&L: +$62.50
+- Exits: target 768 / stop 766 / force_close 159
+- Routing: directional 1,072 (−$1,477.50) / flat 619 (+$1,540.00)
+- Period split:
+  - Historical OOS: 1,080 / 48.0% / **−$2,232.50** (regime classifier inverts: directional −$3,884, flat +$1,651)
+  - In-sample: 613 / 53.2% / +$2,295.00 (directional +$2,406, flat −$111)
+  - Forward: 0 trades
+- Output: `results/archive/trades_hybrid.parquet` (overwritten — prior version backed up locally at `trades_hybrid.parquet.pre-extend-20260511`)
+- Key finding: **regime classifier sign-flips between periods**. Same indicator produces opposite payoffs across historical/in-sample. The +$2,723 in-sample-only hybrid figure from the prior research log was regime-specific.
+- Verdict: combined +$62 over 7 years is statistically indistinguishable from breakeven; the in-sample edge does not generalize. Full details: `docs/research-log-2026-05-historical-extension.md`.
+
+---
+
+## R-008: Hybrid 40/40 variant — wider stop and target
+
+- Date tested: 2026-05-11
+- Config: 3.0 / 40 / 40 / hybrid (otherwise identical to R-007)
+- Trades: 1,600
+- Win rate: 48.7% (779 W / 819 L / 2 flat)
+- P&L: **−$3,216.00**
+- Exits: target 666 / stop 704 / force_close 230 (force-close rate up 45% vs 30/30)
+- Routing: directional 1,005 (**−$6,994.50**) / flat 593 (**+$3,938.50**)
+- Period split:
+  - Historical OOS: 1,000 trades / −$2,666 (Δ −$433 vs 30/30)
+  - In-sample: 600 trades / **−$550** (Δ −$2,846 vs 30/30 — collapse)
+  - Forward: 0 trades
+- Yearly Δ vs hybrid 30/30: 2019 +$254 / 2020 −$249 / 2021 +$190 / 2022 **−$614** / 2023 +$7 / 2024 **−$1,365** / 2025 +$335 / 2026 **−$1,836**
+- Output: `results/archive/trades_hybrid_4040_20260511.parquet`, variant src: `src/simulator_hybrid_4040.py`, charts: `results/charts/40_40_examples/*.png` (10 examples)
+- Verdict: 40/40 is materially worse than 30/30. 30 points reflects MNQ's natural mean-reversion magnitude at this strategy's timeframe; wider stop amplifies trending losses while wider target misses the natural reversion bounce. Flat (breakout-routed) cell partially benefits (+$2,399) but doesn't offset the fade cell collapse (−$5,517). Full details: `docs/research-log-2026-05-variant-4040.md`.
+
+---
+
+## R-009: Priors-only fade variant — today's ORB excluded from clustering
+
+- Date tested: 2026-05-11
+- Config: 3.0 / 30 / 30 / MR-first, but today's ORB high/low NOT added to today's cluster pool (still propagates to tomorrow's deque)
+- Trades: 1,491 (Δ −202 vs R-006)
+- Win rate: 49.0% (730 W / 759 L / 2 flat)
+- P&L: **−$2,373.00** (Δ +$1,004 vs R-006)
+- Exits: target 652 / stop 696 / force_close 143
+- Period split:
+  - Historical OOS: 941 trades / −$4,640 (Δ +$894 vs R-006)
+  - In-sample: 550 trades / +$2,267 (Δ +$110 vs R-006)
+  - Forward: 0 trades
+- Yearly Δ vs R-006: 2019 +$290 / 2020 −$86 / 2021 −$60 / 2022 **+$480** / 2023 +$211 / 2024 −$122 / 2025 **+$352** / 2026 −$60
+- Trade overlap with R-006 baseline: 1,393 shared exactly / 300 dropped / 98 added / 45 entry-price shifted
+- Output: `results/archive/trades_priors_only_20260511.parquet`, variant src: `src/simulator_priors_only.py`
+- Verdict: modest improvement (~30% reduction in loss magnitude), same qualitative result. Today's ORB acts more as noise-introducer than structural anchor — eliminating it removes 300 net-negative-EV trade signals. Improvement concentrated in historically weak years where reducing trade frequency simply means fewer chances to lose. Full details: `docs/research-log-2026-05-variant-priors-only.md`.
+
+---
+
+## R-010: C2 one-position-rule diagnostic (not a new config — design property)
+
+- Date investigated: 2026-05-11
+- Diagnostic case: 2024-08-12 (chart #08 of 40/40 examples)
+- Finding: the C2 rule (`if open_pos is None:` gate at `simulator_hybrid.py` line 202) permanently skips higher-quality cluster setups when a lower-quality one fires first. On 2024-08-12: a size-4 cluster fired at 09:46 and locked the engine until 10:06; during that lockout, a size-7 cluster and another size-4 were touched and **never re-touched after exit** → permanent skip.
+- The strategy fires setups in temporal-touch order, not quality order. Tiebreaker on same-bar multi-touch is `closest limit to bar.open`, which is geometry-driven, not signal-quality-driven.
+- No code bug; C2 is correctly implemented per spec D-004. The design itself has a known cost worth flagging.
+- Possible future variants: (1) quality-prioritized C2 on candidate scan, (2) raise `MIN_CLUSTER_SIZE` from 3 to 4 or 5, (3) sequential entry with risk capping.
+- No simulator output; documentation-only entry. Full details: `docs/research-log-2026-05-c2-rule-diagnostic.md`.
+
+---
+
+## R-011: V2 regime classifier — design spec (NOT IMPLEMENTED YET)
+
+- Date drafted: 2026-05-11
+- Status: **SPEC ONLY. No code, no simulator runs, no parquet output.**
+- Motivation: the current `expected_norm_dist` hybrid classifier sign-flips across periods (see R-007). A v2 classifier should use proper trend-strength indicators (ADX/+DI/-DI/VWAP/ROC/ATR-expansion) at the daily timeframe.
+- Proposed regime taxonomy: TRENDING_UP (long-side fades only) / TRENDING_DOWN (short-side fades only) / SIDEWAYS (both directions, current locked behavior) / MIXED (skip session).
+- Six open design decisions pending: timeframe choice, VWAP anchor, filter aggressiveness, sideways behavior, mixed-regime handling, code structure.
+- Caveat: even with a perfect regime classifier, the strategy still has the same geometry (fixed 30-pt bracket, ORB-anchored entries, C2). Today's findings suggest the bottleneck may not be regime detection — see R-010 (cluster-quality skipping), R-008 (geometry-aware R:R), and forward lockout (200-session pool below price).
+- Full spec: `docs/research-log-2026-05-regime-v2-spec.md`. Resume from the six decisions tomorrow.

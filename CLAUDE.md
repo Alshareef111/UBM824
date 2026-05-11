@@ -19,7 +19,7 @@ Only after reading those three files should you respond to the user's actual req
 
 ## What this project is
 
-A backtest of a futures trading strategy on MNQ (Micro E-mini Nasdaq-100). The strategy enters limit orders at clusters of historical Opening Range Breakout (ORB) levels, expecting mean reversion. Built on 2 years of 1-minute bars from Databento (April 2024 to May 2026), with optional tick-level verification on a 7-week overlap (March to May 2026).
+A backtest of a futures trading strategy on MNQ (Micro E-mini Nasdaq-100). The strategy enters limit orders at clusters of historical Opening Range Breakout (ORB) levels, expecting mean reversion. Built on 7 years of 1-minute bars from Databento (May 2019 to May 2026), with optional tick-level verification on a 7-week overlap (March to May 2026). The original 2-year in-sample window (Apr 2024 – May 2026) is what produced the locked baseline; the 5 historical years (May 2019 – Mar 2024) and 5 forward sessions (May 2026) provide out-of-sample evaluation.
 
 ## Strategy in one paragraph
 
@@ -98,9 +98,38 @@ Tick verification pipeline (requires Google Drive synced for the tick file symli
 4. Always back up any parquet before regenerating.
 5. After any code change, run the full pipeline and verify the headline results match (526 / 52.9% / +$1,975) unless an intentional change is being made.
 
-## Current status
+## Current status (as of 2026-05-11)
 
-- Bar-based backtest: bar-mechanics are reproducible (+$1,975 deterministic), but tick verification on the 2026-03-17 to 2026-04-15 overlap (32 trades) showed bar-sim overstated P&L by ~100% on that slice (bar +$240 vs tick $0). Two distinct optimistic biases identified — phantom fills from non-trade prints in OHLC (~6%) and entry-bar chronology errors (~3%) — partially offset by the pessimistic stop-first conservative rule (~1%). The headline +$1,975 is therefore materially optimistic; full-period tick truth could be near breakeven or modestly negative. See docs/decisions.md D-005, D-014, D-015 and the R-001 caveat in docs/results-log.md.
-- Multiple parameter sweeps tested (see docs/results-log.md). Original 3pt/30/30/MR-first remains the only profitable config.
-- 2025 was a flat-to-negative regime; 2024 and 2026 carried the edge. Visual review of 6 sessions (2024-08-02, 2024-12-20, 2025-01-08, 2025-02-27, 2026-04-02, 2026-04-08) shows the strategy succeeds in range-bound days and fails in trending days; 2025's weakness is consistent with that year being more trending.
-- Open question: regime detection (ATR or volatility filter) to skip 2025-like environments.
+### Dataset
+- **Span:** 2019-05-06 → 2026-05-10 (7 years), 2,467,393 1-min bars, 1,805 ORB-eligible sessions, 28 rolls
+- **Front-month series:** Panama back-adjusted, 29 contracts (MNQM9 through MNQM6)
+- Multi-CSV concat infrastructure in `src/paths.py` (`RAW_CSV_FILES = sorted(...)`) and `src/data_prep.py`. Future extensions = drop a new `glbx-mdp3-*.ohlcv-1m.csv` into `data/raw/` and rerun `python3 src/data_prep.py`.
+
+### Locked baseline
+- `data/processed/trades.parquet` (526 trades / 52.9% / +$1,975) **preserved as historical reference**, sha256 `d24f128ac88227900ac6d44047f0f51e5a5906011e683643a925c63feb15f4c6`. Do NOT overwrite.
+- This file corresponds to the 2024-04-01 → 2026-05-01 in-sample window only. The extended-data equivalent lives at `results/archive/trades_baseline_extended_20260511.parquet`.
+
+### Today's headline finding: strategy does not generalize OOS
+
+7-year extended simulator runs:
+- **Hybrid 30/30 (extended):** 1,693 trades / 49.9% / **+$62.50 combined**. By period: −$2,232 historical OOS (5 years) / +$2,295 in-sample / $0 forward.
+- **Fade-only locked baseline (extended):** 1,693 trades / 48.7% / **−$3,378 combined**. By period: −$5,535 historical OOS / +$2,157 in-sample / $0 forward.
+- Hybrid regime classifier **sign-flips between periods** — directional cell loses $3,884 historically vs +$2,406 in-sample (same indicator, opposite payoff).
+- Forward week (2026-05-04 to 2026-05-08) produced **0 trades** in both simulators: MNQ rallied above the entire 200-session level pool; no clusters near current price.
+
+### Tonight's variant tests (all kept; outputs in results/archive/)
+
+| Variant | File | Result | Verdict |
+|---|---|---|---|
+| Hybrid 30/30 (re-run on 7y) | `trades_hybrid.parquet` | +$62/1693 | Near-zero edge |
+| Fade-only (re-run on 7y) | `trades_baseline_extended_20260511.parquet` | −$3,378/1693 | Loses across history |
+| Hybrid 40/40 | `trades_hybrid_4040_20260511.parquet` | −$3,216/1600 | Worse than 30/30 |
+| Priors-only fade (today's ORB excluded from clustering) | `trades_priors_only_20260511.parquet` | −$2,373/1491 | Modest improvement, still negative |
+
+### Open research direction
+
+**V2 regime classifier** using daily ADX(14), ±DI(14), ROC(10), ATR(14)/ATR(50) ratio, and session-anchored VWAP. Six design decisions pending — full spec at `docs/research-log-2026-05-regime-v2-spec.md`. Status: **NOT IMPLEMENTED**. Resume from the six decisions tomorrow.
+
+### Standing tick-verification caveat (unchanged)
+
+Tick-verification on the 2026-03-17 to 2026-04-15 overlap (32 trades) showed bar-sim overstated P&L by ~100% on that slice — phantom fills from non-trade prints (~6%) and entry-bar chronology errors (~3%) partially offset by stop-first conservative rule (~1%). Net: optimistic bias. See `docs/decisions.md` D-005, D-014, D-015.
