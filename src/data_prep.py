@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
-from paths import RAW_CSV, BARS_PARQUET, ROLLS_PARQUET, ensure_dirs
+from paths import RAW_CSV_FILES, BARS_PARQUET, ROLLS_PARQUET, ensure_dirs
 
 OUTRIGHT_REGEX = re.compile(r"^MNQ[HMUZ]\d+$")
 MONTH_IDX = {"H": 0, "M": 1, "U": 2, "Z": 3}
@@ -172,9 +172,21 @@ def sanity_checks(out: pd.DataFrame) -> None:
 
 def main() -> None:
     ensure_dirs()
-    print(f"Loading {RAW_CSV.name}...")
-    raw = load_and_filter_csv(RAW_CSV)
-    print(f"  {len(raw):,} outright bars across {raw['symbol'].nunique()} contracts")
+    if not RAW_CSV_FILES:
+        raise FileNotFoundError(
+            "No glbx-mdp3-*.ohlcv-1m.csv files found in data/raw/"
+        )
+    print(f"Loading {len(RAW_CSV_FILES)} raw CSV file(s)...")
+    parts = []
+    for p in RAW_CSV_FILES:
+        part = load_and_filter_csv(p)
+        print(f"  {p.name}: {len(part):,} outright bars")
+        parts.append(part)
+    raw = pd.concat(parts, ignore_index=True)
+    before = len(raw)
+    raw = raw.drop_duplicates(subset=["ts_event", "symbol"], keep="first")
+    raw = raw.sort_values("ts_event").reset_index(drop=True)
+    print(f"  Combined: {len(raw):,} outright bars across {raw['symbol'].nunique()} contracts (deduped {before - len(raw)} rows)")
 
     raw = add_session_date(raw)
 

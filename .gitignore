@@ -1,16 +1,21 @@
+# Python
 __pycache__/
 *.pyc
+
+# OS
 .DS_Store
-
-# Large raw data (regenerable from Databento)
-data/raw/*.csv
-data/raw/*.txt
-
-# Generated outputs (regenerable from src/)
-data/processed/*.parquet
-results/charts/*.png
-results/archive/*.parquet
 
 # Editor
 .vscode/
 *.swp
+
+# Raw market data (large, regenerable from Databento; manifests stay tracked)
+data/raw/*.csv
+data/raw/*.txt
+
+# Large derived parquets (regenerable from raw via data_prep / build_tick_cache)
+data/processed/mnq_adjusted_1m.parquet
+data/processed/ticks_overlap.parquet
+
+# Local pre-extension safety-net backups (re-creatable from clean reruns)
+*.pre-extend-*

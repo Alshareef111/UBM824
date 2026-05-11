@@ -18,7 +18,13 @@ CHARTS_DIR = RESULTS_DIR / "charts"
 ARCHIVE_DIR = RESULTS_DIR / "archive"
 
 # Raw data files
-RAW_CSV = RAW_DIR / "glbx-mdp3-20240401-20260501.ohlcv-1m.csv"
+# Sorted list of Databento OHLCV-1m batches. Each forward-test extension lands
+# here as glbx-mdp3-<start>-<end>.ohlcv-1m.csv; data_prep concatenates them in
+# filename order (which equals chronological order given the naming scheme).
+RAW_CSV_FILES = sorted(RAW_DIR.glob("glbx-mdp3-*.ohlcv-1m.csv"))
+# Deprecated alias for back-compat. Prefer RAW_CSV_FILES. Resolves to the
+# earliest batch when present, else the original baseline filename.
+RAW_CSV = RAW_CSV_FILES[0] if RAW_CSV_FILES else RAW_DIR / "glbx-mdp3-20240401-20260501.ohlcv-1m.csv"
 TICK_FILE = RAW_DIR / "MNQ 06-26.LastT.txt"
 MANIFEST_JSON = RAW_DIR / "manifest.json"
 METADATA_JSON = RAW_DIR / "metadata.json"
