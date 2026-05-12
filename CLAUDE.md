@@ -98,7 +98,7 @@ Tick verification pipeline (requires Google Drive synced for the tick file symli
 4. Always back up any parquet before regenerating.
 5. After any code change, run the full pipeline and verify the headline results match (526 / 52.9% / +$1,975) unless an intentional change is being made.
 
-## Current status (as of 2026-05-11)
+## Current status (as of 2026-05-12)
 
 ### Dataset
 - **Span:** 2019-05-06 → 2026-05-10 (7 years), 2,467,393 1-min bars, 1,805 ORB-eligible sessions, 28 rolls
@@ -126,9 +126,21 @@ Tick verification pipeline (requires Google Drive synced for the tick file symli
 | Hybrid 40/40 | `trades_hybrid_4040_20260511.parquet` | −$3,216/1600 | Worse than 30/30 |
 | Priors-only fade (today's ORB excluded from clustering) | `trades_priors_only_20260511.parquet` | −$2,373/1491 | Modest improvement, still negative |
 
-### Open research direction
+### V2 regime classifier — COMPLETE (2026-05-12)
 
-**V2 regime classifier** using daily ADX(14), ±DI(14), ROC(10), ATR(14)/ATR(50) ratio, and session-anchored VWAP. Six design decisions pending — full spec at `docs/research-log-2026-05-regime-v2-spec.md`. Status: **NOT IMPLEMENTED**. Resume from the six decisions tomorrow.
+Investigation finished. **Deployment winner: ADX(N=15, thr=30) ∧ DI(N=15, thr=8) unanimous AND-gate per cluster touch.**
+
+- Headline: 949 trades / 55.2% WR / **+$5,803** over 7 years (R-012)
+- Walk-forward 7×(3y IS + 1y OOS, advance 6mo): sharpe-like **5.32**, sign **7/7**, median per-window OOS **$1,082**
+- 8 of 8 calendar years positive (worst 2020 +$199, best 2025 +$1,408)
+- Trades parquet: `results/archive/trades_regime_v2_20260512.parquet`
+- Framework abandoned the original "daily timeframe + 6 design decisions" approach; replaced with per-indicator-as-hypothesis investigation on 1-min bars. ADX and ±DI work; ROC, ATR, VWAP confirmed noise.
+- Phase 7 diagnostics: window-trend slope +$33/window (no decay); DI discrimination 100th percentile vs 30 same-bias random labelings; **2026 Jan-Apr underperforms AllFade by -$1,422 — deployment concern**.
+- **Forward test required before live deployment.** 6 months minimum, specific pass/fail criteria in `docs/research-log-2026-05-regime-v2-investigation.md`.
+
+New source: `src/indicators/{base,adx,di,roc,atr,vwap}.py`, `src/simulator_v2.py`, `src/walk_forward.py`, `src/phase6_run.py`, `src/phase7_analysis.py`. Locked simulator/baseline untouched.
+
+Full report: `docs/research-log-2026-05-regime-v2-investigation.md`. Entry: R-012 in `docs/results-log.md`.
 
 ### Standing tick-verification caveat (unchanged)
 

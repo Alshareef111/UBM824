@@ -1,0 +1,37 @@
+Loading bars + ORB table...
+  2,467,393 bars, 1805 ORB sessions
+Pre-computing ATR ratio lookups for each (N_short, N_long=4*N_short) pair...
+  ATR(Ns=15,Nl=60) ready in 3.5s
+  ATR(Ns=30,Nl=120) ready in 3.6s
+  ATR(Ns=60,Nl=240) ready in 3.5s
+  ATR(Ns=120,Nl=480) ready in 3.6s
+  Pre-compute total: 14.2s
+
+Sweeping 16 configs (4-gate qualification):
+           Ns= 15 Nl=  60 thr= 0.7  trades=1693 (F=   0 T=1693)  OOS median=$   -568  sharpe= -0.38  sign=3/7  total=$   2778  [2.8s]
+           Ns= 15 Nl=  60 thr= 1.0  trades=1693 (F= 150 T=1543)  OOS median=$    267  sharpe=  0.18  sign=4/7  total=$   5026  [2.8s]
+           Ns= 15 Nl=  60 thr= 1.3  trades=1693 (F= 691 T=1002)  OOS median=$     78  sharpe=  0.10  sign=4/7  total=$     38  [2.8s]
+           Ns= 15 Nl=  60 thr= 1.6  trades=1693 (F=1382 T= 311)  OOS median=$    419  sharpe=  0.34  sign=4/7  total=$  -1020  [2.8s]
+           Ns= 30 Nl= 120 thr= 0.7  trades=1693 (F=   0 T=1693)  OOS median=$   -568  sharpe= -0.38  sign=3/7  total=$   2778  [2.9s]
+           Ns= 30 Nl= 120 thr= 1.0  trades=1693 (F=   9 T=1684)  OOS median=$   -448  sharpe= -0.31  sign=3/7  total=$   2888  [2.8s]
+           Ns= 30 Nl= 120 thr= 1.3  trades=1693 (F= 302 T=1391)  OOS median=$    479  sharpe=  0.43  sign=5/7  total=$   3342  [2.8s]
+           Ns= 30 Nl= 120 thr= 1.6  trades=1693 (F=1218 T= 475)  OOS median=$   -210  sharpe= -0.17  sign=2/7  total=$   -882  [2.8s]
+           Ns= 60 Nl= 240 thr= 0.7  trades=1693 (F=   0 T=1693)  OOS median=$   -568  sharpe= -0.38  sign=3/7  total=$   2778  [2.8s]
+           Ns= 60 Nl= 240 thr= 1.0  trades=1693 (F=   4 T=1689)  OOS median=$   -568  sharpe= -0.38  sign=3/7  total=$   2670  [2.8s]
+           Ns= 60 Nl= 240 thr= 1.3  trades=1693 (F= 127 T=1566)  OOS median=$    221  sharpe=  0.21  sign=4/7  total=$   3010  [2.8s]
+           Ns= 60 Nl= 240 thr= 1.6  trades=1693 (F=1138 T= 555)  OOS median=$   -600  sharpe= -0.57  sign=3/7  total=$  -1516  [2.9s]
+           Ns=120 Nl= 480 thr= 0.7  trades=1693 (F=   0 T=1693)  OOS median=$   -568  sharpe= -0.38  sign=3/7  total=$   2778  [2.9s]
+           Ns=120 Nl= 480 thr= 1.0  trades=1693 (F=  12 T=1681)  OOS median=$   -568  sharpe= -0.37  sign=3/7  total=$   2304  [2.9s]
+           Ns=120 Nl= 480 thr= 1.3  trades=1693 (F= 469 T=1224)  OOS median=$   -198  sharpe= -0.13  sign=3/7  total=$    154  [2.8s]
+           Ns=120 Nl= 480 thr= 1.6  trades=1693 (F=1456 T= 237)  OOS median=$     -9  sharpe= -0.01  sign=3/7  total=$  -2572  [2.9s]
+
+Wrote sweep_results.parquet (16 rows)
+  Re-running ATR(Ns=60,thr=1.3) for trade output...
+  Re-running ATR(Ns=15,thr=1.3) for trade output...
+  Re-running ATR(Ns=15,thr=1.6) for trade output...
+  Re-running ATR(Ns=15,thr=1.0) for trade output...
+  Re-running ATR(Ns=30,thr=1.3) for trade output...
+Wrote /Users/hashim/Desktop/MNQ-Strategy/results/archive/sweep_atr_20260512/report.md
+
+Total elapsed: 1.2 min
+Artifacts: /Users/hashim/Desktop/MNQ-Strategy/results/archive/sweep_atr_20260512

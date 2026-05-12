@@ -231,3 +231,33 @@ R-XXX: short title — gap / stop / target / direction-entry
 - Six open design decisions pending: timeframe choice, VWAP anchor, filter aggressiveness, sideways behavior, mixed-regime handling, code structure.
 - Caveat: even with a perfect regime classifier, the strategy still has the same geometry (fixed 30-pt bracket, ORB-anchored entries, C2). Today's findings suggest the bottleneck may not be regime detection — see R-010 (cluster-quality skipping), R-008 (geometry-aware R:R), and forward lockout (200-session pool below price).
 - Full spec: `docs/research-log-2026-05-regime-v2-spec.md`. Resume from the six decisions tomorrow.
+
+---
+
+## R-012: V2 regime classifier — ADX∧DI unanimous deployment winner
+
+- Date tested: 2026-05-12
+- Config: locked-baseline geometry + per-cluster FADE/TREND from unanimous AND-gate over **ADX(N=15, thr=30)** and **DI(N=15, thr=8)** at touch bar T using bars `[T−15, T−1]`. Six original framework decisions abandoned; replaced with per-indicator-as-hypothesis investigation (build, solo test, LOO test, decide). All on 1-min bars; daily timeframe dropped per user.
+- Trades: 949 over 7 years (2019-05-15 → 2026-04-15)
+- Win rate: 55.2% (524 W / 425 L / 0 flat)
+- P&L: **+$5,803.00 total** (vs locked fade-only baseline R-006 at **−$3,378** on same 7-year dataset)
+- Exits: 480 target / 382 stop / 87 force_close
+- Label split: 410 FADE / 539 TREND (43% / 57%)
+- Yearly P&L: 2019 +$1,155 / 2020 +$199 / 2021 +$337 / 2022 +$371 / 2023 +$1,181 / 2024 +$955 / 2025 +$1,408 / 2026 (Jan-Apr) +$199
+- **8 of 8 calendar years positive** (worst year 2020 still +$199)
+- Walk-forward (7 windows of 3y IS + 1y OOS, advance 6mo):
+  - **Sharpe-like = median(OOS) / stdev(OOS) = 5.32** (highest of any config tested across all phases)
+  - Sign stability: **7/7 OOS windows positive**
+  - Median per-window OOS: $1,082
+  - Per-window range: $763–$1,340 (tight)
+- Output: `results/archive/trades_regime_v2_20260512.parquet` sha256 `63d792e143a57d4c94b7fa472b90aaffaaa0068359dcf3cf5187c5da57d200f6`
+- Source: `src/simulator_v2.py`, `src/indicators/{adx,di,base}.py`, `src/phase6_run.py`
+- Phase 7 diagnostics:
+  - Window-trend regression: **+$33/window** (insignificant, r²=0.12) — composite has NO decay despite DI solo decaying at -$230/window (t=-2.59). Unanimous filter fixes DI's decay.
+  - DI discrimination check: DI(15,8) actual scores at **100th percentile** of 30 BiasedRandom(73% TREND) seeds on all of sharpe, median, total. DI is genuinely selecting clusters, not just imposing bias.
+  - **2026 Jan-Apr comparison** (deployment concern): AllFade locked baseline +$1,620 / 189 trades vs ADX∧DI +$199 / 113 trades. Composite underperforms AllFade by **−$1,422 over 4 months**. Either small-sample noise or regime drift.
+- Null comparison (50 RandomBinary seeds): null p95 sharpe 1.06, null max sharpe 1.21, null max sign 6/7. Deployment winner exceeds these by 4-5×.
+- Solo indicator survey: ADX strong (sharpe 4.02), ±DI strong (2.30), ROC noise (1.43 but total -$1,430), ATR noise (max 0.43), VWAP noise (max 0.70). Only directional-momentum indicators worked.
+- Verdict: strongest single config tested. **Not for live deployment without 6-month forward test.** Forward-test pass criteria and invalidating triggers specified in `docs/research-log-2026-05-regime-v2-investigation.md`.
+- Caveats: cross-window OOS evaluation (not pure walk-forward); 7 OOS windows overlap; same parameters across all windows; 2026-partial underperformance vs AllFade requires explicit forward validation.
+- Full details: `docs/research-log-2026-05-regime-v2-investigation.md`.

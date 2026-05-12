@@ -19,3 +19,19 @@ data/processed/ticks_overlap.parquet
 
 # Local pre-extension safety-net backups (re-creatable from clean reruns)
 *.pre-extend-*
+
+# Tick files
+data/raw/MNQ*.LastT.txt
+data/raw/MNQ*.LastT
+
+# Processed parquets (large/regenerable). Keep the locked baseline trades.parquet
+# as a sha256-pinned historical reference.
+data/processed/*.parquet
+!data/processed/trades.parquet
+data/processed/*.parquet.backup
+
+# Generated charts
+results/charts/*.png
+
+# Archived experiment outputs (regenerable)
+results/archive/*.parquet
