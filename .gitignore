@@ -32,6 +32,8 @@ data/processed/*.parquet.backup
 
 # Generated charts
 results/charts/*.png
+results/archive/**/*.png
 
-# Archived experiment outputs (regenerable)
-results/archive/*.parquet
+# Archived experiment outputs (regenerable). Recursive so per-experiment
+# subdirectories are caught too.
+results/archive/**/*.parquet
