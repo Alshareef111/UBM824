@@ -1073,20 +1073,56 @@ V2 + 40/40 is a **bar-based** backtest on 1-min OHLCV bars. Three distinct biase
 
 Cross-references: §5.2 (same-bar precedence and the Bug A self-protection mechanism); the full diagnostic at `results/archive/v2_4040_stop_loss_diagnostic_20260516/report.md`; §9 (queued tick-verification follow-up).
 
-### 8.2 No commissions or slippage applied to headline figures
+### 8.2 Commissions and slippage applied — V2 + 40/40 net (2026-05-16)
 
-The +$8,808 / $9.70-per-trade headline is **fully gross** — no commissions, no slippage, no exchange fees.
+The +$8,808 / $9.70-per-trade headline cited in §6 is **fully gross** (no commissions, no slippage, no exchange fees). The first cost-adjusted re-run for the deployment candidate was completed 2026-05-16 — full results below. The full walk-forward re-run with per-trade cost applied (revised 4-gate qualification on per-window OOS) remains queued (§9.2); this section reports the trade-level cost-adjusted picture only.
 
-**Commission (documented).** `docs/decisions.md:OQ-4` records the locked-baseline-era estimate: "~$447 over 526 trades reduces net to ~$1,475 over 2 years" → roughly **$0.85 per round-trip per contract**. Applied to V2 + 40/40's 908 trades: **−$771.80 total commission adjustment**. Net of commission only:
+**Cost model — MNQ on NinjaTrader Free (`results/cost_adjusted/_run_mnq_costs_20260516.py`):**
 
-| Metric | Gross (headline) | Net of $0.85/trade commission |
+| Component | Per side | Round-trip per contract |
 |---|---:|---:|
-| Per-trade expectancy | +$9.70 | **+$8.85** |
-| Total P&L | +$8,808 | **+$8,036** |
+| Commission ($0.35 broker + $0.37 exchange + $0.15 NFA) | $0.87 | **$1.74** |
+| Slippage (1 tick × $0.50 / tick) | $0.50 | **$1.00** |
+| **Total** | $1.37 | **$2.74** |
 
-**Slippage (NOT quantified).** `docs/decisions.md:OQ-5` is explicit: *"Limit fills assume zero slippage. Force-close uses bar open. Real fills may be worse, especially for force-close in fast markets."* No project-doc-stated estimate exists for MNQ slippage. Industry-typical estimates (1–2 ticks per side, ~$0.50–$2 per round-trip on MNQ at $0.50/tick) would further reduce expectancy by an unquantified amount.
+Implicit 1-contract sizing per §5.5; total cost applied = 908 × $2.74 = **$2,487.92**. Of this, **63.5% is commission**, **36.5% is slippage**. The earlier `docs/decisions.md:OQ-4` commission-only estimate (~$0.85/trade) used a less conservative broker assumption; the $0.87/side here is NinjaTrader Free's actual all-in commission as of 2026-05-16. The OQ-5 slippage gap (`docs/decisions.md`: *"Limit fills assume zero slippage"*) is closed at the trade-level by the 1-tick/side assumption; the assumption itself is industry-conservative but not tick-verified.
 
-**Bottom line.** Until cost-adjusted re-run is done (queued in §9), the +$8,808 figure should be read as an **upper bound**, not a deployment expectation. A documented-commission-only adjustment puts the floor at +$8,036; realistic slippage assumptions would shave additional dollars-per-trade.
+**Headline comparison — V2 + 40/40 gross vs net:**
+
+| Metric | Gross | Net | Δ | Δ% |
+|---|---:|---:|---:|---:|
+| Trades | 908 | 908 | 0 | — |
+| W / L / Flat | 510 / 398 / 0 | 505 / 403 / 0 | (5 small-positive trades flip negative) | — |
+| Win rate | 56.17% | 55.62% | −0.55pp | — |
+| **Total P&L** | **+$8,808.00** | **+$6,320.08** | **−$2,487.92** | **−28.25%** |
+| Expectancy / trade | +$9.70 | +$6.96 | −$2.74 | −28.25% |
+| Profit factor | 1.309 | 1.214 | −0.096 | −7.30% |
+| Sharpe (daily ann.) | 2.504 | 1.809 | −0.695 | −27.77% |
+| Max drawdown | −$1,228 | −$1,379 | −$151 | +12.27% (deeper) |
+
+**Per-label asymmetry — TREND is more cost-resilient than FADE:**
+
+| Per-label | FADE gross → net | Δ% | TREND gross → net | Δ% |
+|---|---:|---:|---:|---:|
+| Trades | 391 | — | 517 | — |
+| Total P&L | +$2,873 → +$1,802 | **−37.29%** | +$5,935 → +$4,518 | **−23.87%** |
+| Expectancy / trade | +$7.35 → +$4.61 | −37.29% | +$11.48 → +$8.74 | −23.87% |
+| Sharpe (daily ann.) | 1.687 → 1.058 | −37.24% | 2.770 → 2.136 | −22.92% |
+
+**TREND's larger gross expectancy ($11.48 vs FADE's $7.35) absorbs the fixed $2.74 / trade haircut better.** Under realistic costs the V2 classifier's TREND-flip contribution gains relative importance — without the regime gate, an AllFade strategy at 40/40 (gross −$11,253 per §6.8) would land at roughly −$13,741 net before the bracket-interaction effects compound further. The classifier is not just edge — it's also cost-tolerance.
+
+**4-gate qualification status under net:**
+
+- **Gate 4 (total P&L > 0)** — **still PASSES** at +$6,320.08 net.
+- **Gates 1–3** (median OOS > 0; sign stability ≥ 6/7; WF Sharpe-like > 1.06) — **not derivable** from a single trade-level subtraction. Require a per-window walk-forward re-run with the cost applied. Queued (§9.2). The cost is constant per trade so per-window OOS shifts down by `n_trades_in_window × $2.74`; the relative ordering across windows is unchanged, so qualitative WF stability properties (7/7 sign, ~6× margin over null) are very likely to survive — but the absolute WF Sharpe-like will move and the 4-gate margin should be recomputed before deployment sign-off.
+
+**Bug-vs-cost interaction (cross-reference §8.1).** Today's stop-loss diagnostic put the upper-bound Bug B P&L recovery at ~$908 (gross). The cost-per-trade haircut is independent of bug correction, so the recovery's relative significance under net is **~$908 / $6,320 ≈ 14.4% of net P&L** (vs 3.3% of gross). Tick verification (§9.2) becomes proportionally more important once realistic costs are applied.
+
+**Bottom line.** Under conservative NinjaTrader-Free costs (commission + 1-tick slippage), V2 + 40/40 retains positive net edge of **+$6,320 / +$6.96 per trade / Sharpe 1.81 / PF 1.21**, with all stability properties intact at the trade-level. Deployment sign-off still requires the full walk-forward 4-gate re-run on net P&L (queued §9.2) plus the forward paper-test (§9.2 BLOCKER). The $6,320 figure is now the most realistic deployment-expectation number in this document.
+
+**Artifacts:**
+- `results/cost_adjusted/trades_cost_adjusted_mnq_20260516.parquet` — 908 rows × 19 cols (original 14 + `cost_commission`, `cost_slippage`, `cost_total`, `pnl_gross`, `pnl_net`); sha256 `1ba09d97fad6946107d4392481f2be09396d6e7da9cd9c6a3f7a4ebcf980bb45`
+- `results/cost_adjusted/_run_mnq_costs_20260516.py` — re-runnable cost-adjustment script (idempotent on inputs; reads from the canonical V2+40/40 trades.parquet, writes only to `results/cost_adjusted/`).
 
 ### 8.3 In-sample classifier selection risk
 
