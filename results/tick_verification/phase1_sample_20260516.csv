@@ -1,0 +1,41 @@
+date,n_trades,stratum,sub_stratum,total_pnl_gross,fade_count,trend_count,rationale
+2020-03-03,2,S3_bug_b_suspect,same_bar_exit,-62.0,0,2,backfill: 1 same-bar exit(s)
+2020-03-13,3,S2_high_stakes,,240.0,1,2,daily |pnl| = $240 (top-16 excluding S1)
+2020-04-21,3,S2_high_stakes,,240.0,0,3,daily |pnl| = $240 (top-16 excluding S1)
+2020-05-08,1,S1_uniform,,-19.0,1,0,uniform random draw
+2020-10-29,1,S1_uniform,,-80.0,1,0,uniform random draw
+2021-03-15,1,S1_uniform,,80.0,1,0,uniform random draw
+2021-10-14,1,S1_uniform,,26.0,0,1,uniform random draw
+2021-12-07,1,S1_uniform,,80.0,0,1,uniform random draw
+2022-01-03,5,S2_high_stakes,,240.0,1,4,daily |pnl| = $240 (top-16 excluding S1)
+2022-01-04,8,S2_high_stakes,,480.0,1,7,daily |pnl| = $480 (top-16 excluding S1)
+2022-01-07,3,S2_high_stakes,,240.0,0,3,daily |pnl| = $240 (top-16 excluding S1)
+2022-01-19,2,S1_uniform,,-160.0,1,1,uniform random draw
+2022-02-07,2,S1_uniform,,160.0,2,0,uniform random draw
+2022-10-18,2,S1_uniform,,0.0,1,1,uniform random draw
+2022-11-29,2,S1_uniform,,33.0,0,2,uniform random draw
+2022-12-08,5,S2_high_stakes,,400.0,0,5,daily |pnl| = $400 (top-16 excluding S1)
+2023-03-15,3,S2_high_stakes,,240.0,2,1,daily |pnl| = $240 (top-16 excluding S1)
+2023-03-16,3,S2_high_stakes,,240.0,1,2,daily |pnl| = $240 (top-16 excluding S1)
+2023-08-24,3,S2_high_stakes,,240.0,0,3,daily |pnl| = $240 (top-16 excluding S1)
+2023-11-06,1,S1_uniform,,80.0,1,0,uniform random draw
+2024-08-12,3,S2_high_stakes,,-240.0,1,2,daily |pnl| = $240 (top-16 excluding S1)
+2024-09-11,5,S2_high_stakes,,240.0,0,5,daily |pnl| = $240 (top-16 excluding S1)
+2024-11-19,1,S3_bug_b_suspect,tight_stop_touch,-80.0,0,1,1 trade(s) with entry bar adverse extreme within 1 tick of stop
+2025-01-08,3,S2_high_stakes,,240.0,3,0,daily |pnl| = $240 (top-16 excluding S1)
+2025-02-03,6,S3_bug_b_suspect,gap_day,0.0,4,2,open-to-prior-close gap 1.28%
+2025-02-27,4,S2_high_stakes,,320.0,0,4,daily |pnl| = $320 (top-16 excluding S1)
+2025-05-19,3,S2_high_stakes,,240.0,0,3,daily |pnl| = $240 (top-16 excluding S1)
+2025-06-12,1,S3_bug_b_suspect,same_bar_exit,80.0,1,0,1 same-bar exit(s) on this date
+2025-08-06,1,S1_uniform,,80.0,1,0,uniform random draw
+2025-10-22,1,S1_uniform,,80.0,0,1,uniform random draw
+2025-12-19,1,S1_uniform,,-80.0,0,1,uniform random draw
+2026-01-02,2,S3_bug_b_suspect,high_vol_day,0.0,0,2,trading-window range 509.50pt > mu+2sd (334.63)
+2026-01-29,10,S3_bug_b_suspect,same_bar_exit,0.0,0,10,2 same-bar exit(s) on this date
+2026-02-12,3,S1_uniform,,80.0,1,2,uniform random draw
+2026-02-20,3,S2_high_stakes,,-240.0,1,2,daily |pnl| = $240 (top-16 excluding S1)
+2026-02-27,1,S3_bug_b_suspect,same_bar_exit,-80.0,1,0,1 same-bar exit(s) on this date
+2026-03-03,2,S1_uniform,,0.0,2,0,uniform random draw
+2026-03-04,3,S3_bug_b_suspect,tight_stop_touch,80.0,3,0,1 trade(s) with entry bar adverse extreme within 1 tick of stop
+2026-04-02,1,S3_bug_b_suspect,high_vol_day,80.0,0,1,trading-window range 524.75pt > mu+2sd (334.63)
+2026-04-13,1,S3_bug_b_suspect,gap_day,80.0,1,0,open-to-prior-close gap 1.30%
