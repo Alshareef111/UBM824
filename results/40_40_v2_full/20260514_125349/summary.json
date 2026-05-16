@@ -1,0 +1,66 @@
+{
+  "n_trades": 908,
+  "n_wins": 510,
+  "n_losses": 398,
+  "n_flats": 0,
+  "win_rate": 0.5616740088105727,
+  "total_return_dollars": 8808.0,
+  "total_return_points": 4404.0,
+  "expectancy_per_trade_dollars": 9.700440528634362,
+  "avg_win_dollars": 73.13235294117646,
+  "avg_loss_dollars": -71.58165829145729,
+  "gross_win_dollars": 37297.5,
+  "gross_loss_dollars": 28489.5,
+  "profit_factor": 1.309166535039225,
+  "max_drawdown_dollars": -1228.0,
+  "sharpe_daily_annualized": 2.5041436220668083,
+  "sharpe_per_trade": 0.13025284382428354,
+  "exits": {
+    "target": 442,
+    "stop": 336,
+    "force_close": 130
+  },
+  "cluster_label_split": {
+    "TREND": 517,
+    "FADE": 391
+  },
+  "yearly_pnl": {
+    "2019": {
+      "pnl": 1123.5,
+      "trades": 88
+    },
+    "2020": {
+      "pnl": 503.0,
+      "trades": 87
+    },
+    "2021": {
+      "pnl": 653.5,
+      "trades": 95
+    },
+    "2022": {
+      "pnl": 793.0,
+      "trades": 139
+    },
+    "2023": {
+      "pnl": 1569.0,
+      "trades": 144
+    },
+    "2024": {
+      "pnl": 1226.0,
+      "trades": 105
+    },
+    "2025": {
+      "pnl": 2347.5,
+      "trades": 140
+    },
+    "2026": {
+      "pnl": 592.5,
+      "trades": 110
+    }
+  },
+  "first_session": "2019-05-15",
+  "last_session": "2026-04-15",
+  "stop_points": 40.0,
+  "target_points": 40.0,
+  "point_value_usd": 2.0
+}
