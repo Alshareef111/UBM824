@@ -183,6 +183,20 @@ Format: each entry has Date, Decision, Alternatives considered, Reasoning, and S
 
 ---
 
+## D-016: Phase 1 sample-design reproducibility — toolchain-dependent S2 tiebreak
+
+- Date: 2026-05-17 (discovered during Mac-mini reproducibility check after 78a2a25)
+- Decision: Add `session_date` ASC as the secondary sort key in S2_high_stakes ranking in `results/tick_verification/_phase1_sample_design.py`. Preserve the canonical CSV at `results/tick_verification/phase1_sample_20260516.csv` (laptop output at 78a2a25, sha256 `2ebd7512ef115d0a68e1c3a0cd4b9a05841f0c0b1ae97a12514833369f791484`) as-is. The fixed script is deterministic going forward but produces a different sample than canonical at the S2 tie boundary — the canonical CSV is NOT to be regenerated without an explicit, documented supersession.
+- Mechanism: 16 session_dates tie at exactly `|daily_pnl| = $240` and compete for the bottom 12 of the S2 top-15 slots. The pre-fix ranker (`agg.sort_values("abs_pnl", ascending=False)`) had no secondary sort key, so the tied order fell back to pandas' stable-sort behavior over the prior groupby's row order. Both of those vary across pandas / numpy / Python combinations.
+- Empirical observations:
+  - Laptop at 78a2a25 (pandas pre-3.0.2, likely 2.x): one specific permutation of the $240 ties.
+  - Mac mini (python 3.14.4 / numpy 2.4.4 / pandas 3.0.2), pre-fix re-run: 1-row swap from canonical (`2026-02-20` → `2025-06-20`).
+  - Mac mini, post-fix re-run: 2-row swap from canonical (drops `2025-05-19` and `2026-02-20`, adds `2021-06-01` and `2021-09-22`); byte-identical across two consecutive runs (sha256 `64acf32b…`).
+- Direction of impact: none material. All candidates in the tie pool share `|pnl| = $240`, trade-count and FADE/TREND mix in the same range — the swap is at the tiebreak boundary, not in the S2 rank ordering. The S1 and S3 strata (including the entire Bug B suspect set) are unaffected. Coverage stats (40/576 dates, ~12% of trades) are unchanged.
+- Status: fixed in script (commit `0fa001b`); canonical CSV preserved (no diff applied). Cross-references: commit `8e92afe` (restore + finding) and commit `0fa001b` (deterministic tiebreak). Pre-fix sample picks are recoverable by checking out the laptop CSV from git history.
+
+---
+
 ## Open questions (unresolved)
 
 - OQ-1: Regime detection. Strategy is profitable in 2024 (+$436) and 2026 YTD (+$1,620), flat in 2025 (-$81). Breakout variant inverted: profitable in 2025, lost in others. Possible regime indicators to test: 20-day ATR, ADX, ORB width relative to recent average. Risk: overfitting.
