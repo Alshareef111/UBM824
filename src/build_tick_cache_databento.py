@@ -4,12 +4,25 @@ Ingests a Databento trades-schema dbn.zst download into the same parquet
 schema as `ticks_overlap.parquet` so the existing tick consumers
 (`tick_replay_v2*.py`, `verify_ticks.py`) work unchanged.
 
-Schema produced (matches `ticks_overlap.parquet`):
-    ts_utc  : pd.Timestamp (UTC)
-    last    : float64 (trade print price)
-    bid     : float64 (NaN — not in trades schema)
-    ask     : float64 (NaN — not in trades schema)
-    volume  : int64 (trade size in contracts)
+Schema produced (matches `ticks_overlap.parquet`, plus a `contract` column
+derived from ts_event via rolls.parquet for post-hoc adjustment auditing):
+    ts_utc   : pd.Timestamp (UTC)
+    last     : float64 (trade print price, Panama-back-adjusted to the bar
+               frame via per-contract offsets from src/data_prep.build_adjustments)
+    contract : str (active front-month contract at ts_event — MNQH6, MNQM6, etc.,
+               derived from rolls.parquet boundaries since Databento's continuous
+               download preserves "MNQ.c.0" as the DBN symbol)
+    bid      : float64 (NaN — not in trades schema)
+    ask      : float64 (NaN — not in trades schema)
+    volume   : int64 (trade size in contracts)
+
+Panama back-adjustment: Databento's continuous returns raw front-month prices
+(MNQH6 in Jan-Mar 2026, MNQM6 in Apr 2026). The simulator bars are Panama-
+adjusted: panama_price = raw_price + offset[contract] with offset[newest] = 0
+and older contracts accumulating their roll-gaps. This builder applies the
+same offset table (from rolls.parquet via data_prep.build_adjustments) so
+the output parquet lands in the same price frame as mnq_adjusted_1m.parquet.
+See OQ-6 in _databento_acquisition_brief.md for the broader lesson.
 
 Defaults are wired for the Tight-window Databento purchase:
     input:  data/raw/mnq_trades_2026-01-01_to_2026-05-01.dbn.zst
@@ -31,6 +44,11 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_INPUT = REPO_ROOT / "data/raw/mnq_trades_2026-01-01_to_2026-05-01.dbn.zst"
 DEFAULT_OUTPUT = REPO_ROOT / "data/processed/ticks_databento_2026-01-01_to_2026-05-01.parquet"
+ROLLS_PATH = REPO_ROOT / "data/processed/rolls.parquet"
+
+# Reuse the simulator's Panama offset table — single source of truth.
+sys.path.insert(0, str((Path(__file__).resolve().parent).as_posix()))
+from data_prep import build_adjustments  # noqa: E402
 
 
 def main() -> None:
@@ -117,9 +135,49 @@ def main() -> None:
     coerced_price = int(price.isna().sum())
     coerced_volume = int(volume.isna().sum())
 
+    # Panama back-adjustment: Databento returns raw front-month prices; the
+    # simulator bars are Panama-adjusted (panama = raw + offset[contract]).
+    # We derive the active contract per tick from rolls.parquet by binning
+    # ts_event against roll ref_ts boundaries (Databento's DBN preserves the
+    # continuous symbol "MNQ.c.0" as the per-trade `symbol` rather than
+    # resolving to MNQH6/MNQM6/etc., so we use the project's own roll table
+    # — same source of truth the bar pipeline uses).
+    rolls = pd.read_parquet(ROLLS_PATH)
+    adj = build_adjustments(rolls)
+    print(f"  Panama adjustment table ({len(adj)} contracts) — first 6 by descending offset:")
+    for c, off in sorted(adj.items(), key=lambda kv: -kv[1])[:6]:
+        print(f"    {c}: +{off:.2f}")
+
+    rolls_sorted = rolls.sort_values("ref_ts").reset_index(drop=True)
+    boundary_ns = rolls_sorted["ref_ts"].astype("int64").to_numpy()
+    # contract_by_bin[0] = oldest contract (active before any roll)
+    # contract_by_bin[i] = rolls_sorted.iloc[i-1].new_contract (active after roll i-1)
+    contract_by_bin = ([rolls_sorted.iloc[0]["old_contract"]]
+                       + rolls_sorted["new_contract"].tolist())
+    contract_by_bin_arr = np.array(contract_by_bin, dtype=object)
+
+    ts_utc_reset = ts_utc.reset_index(drop=True)
+    ts_ns = ts_utc_reset.astype("int64").to_numpy()
+    bin_idx = np.searchsorted(boundary_ns, ts_ns, side="right")
+    contracts = contract_by_bin_arr[bin_idx]
+
+    offset = pd.Series(contracts).map(adj)
+    unmapped = int(offset.isna().sum())
+    if unmapped:
+        unique_unmapped = sorted(set(pd.Series(contracts[offset.isna().values]).unique()))
+        sys.exit(f"FAIL: {unmapped:,} ticks mapped to contracts not in adjustment table: "
+                 f"{unique_unmapped}")
+
+    contract_series = pd.Series(contracts, name="contract")
+    print(f"  Derived contract counts: {dict(contract_series.value_counts())}")
+    print(f"  Offset counts (pts -> n ticks): "
+          f"{dict(offset.value_counts().sort_index(ascending=False))}")
+    adjusted_price = price.reset_index(drop=True) + offset
+
     out = pd.DataFrame({
-        "ts_utc": ts_utc.reset_index(drop=True),
-        "last": price.reset_index(drop=True),
+        "ts_utc": ts_utc_reset,
+        "last": adjusted_price,
+        "contract": contract_series,  # derived from ts_event via rolls.parquet
         "bid": pd.Series([np.nan] * raw_rows, dtype="float64"),
         "ask": pd.Series([np.nan] * raw_rows, dtype="float64"),
         "volume": volume.reset_index(drop=True),
