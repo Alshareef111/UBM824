@@ -44,6 +44,11 @@ data/processed/*.parquet
 !data/processed/trades.parquet
 data/processed/*.parquet.backup
 
+# Derived Databento tick caches (regeneratable from data/raw/*.dbn.zst via
+# src/build_tick_cache_databento.py). Already covered by the
+# data/processed/*.parquet rule above; listed here explicitly for clarity.
+data/processed/ticks_databento_*.parquet
+
 # Generated charts
 results/charts/*.png
 results/archive/**/*.png
