@@ -18,6 +18,19 @@ would bias the sample):
     <= 0.25  (1 MNQ tick)
   - S3 sub-stratum target allocation: 3a + 3b + 2c + 2d; backfill within S3
     from earlier sub-strata if any falls short; final fallback per spec.
+
+CANONICAL SAMPLE NOTICE:
+  results/tick_verification/phase1_sample_20260516.csv is the canonical
+  Phase 1 sample, produced on the laptop at commit 78a2a25 under a pandas
+  version pre-3.0.2 (likely pandas 2.x). This script with the deterministic
+  session_date-ASC tiebreak (added 2026-05-17) produces a STABLE but
+  DIFFERENT output at the S2 $240 tie boundary: 2 of the 16 $240-tied
+  S2 picks swap (deterministic now drops 2025-05-19 and 2026-02-20 in
+  favor of 2021-06-01 and 2021-09-22; canonical did the opposite).
+  All three pre-fix machines/runs produced statistically equivalent
+  S2 samples; the swap is at the tiebreak boundary, not in the rank
+  ordering. DO NOT regenerate the canonical CSV without an explicit,
+  documented supersession.
 """
 import hashlib
 from pathlib import Path
@@ -89,7 +102,12 @@ def main():
     print(f"S1 picked: {len(s1_dates)} dates")
 
     # ----------- Stratum 2 — Top |daily P&L| (n=15) -----------
-    ranked = agg.sort_values("abs_pnl", ascending=False)["session_date"].tolist()
+    # Tiebreaker: 16 session_dates share |pnl| = $240 at the S2 boundary,
+    # so sorting on abs_pnl alone leaves tied order toolchain-dependent
+    # (pandas sort stability + groupby output order vary across versions).
+    # session_date ASC makes the tiebreak deterministic. See the previous
+    # commit's message for the repro-check that surfaced this.
+    ranked = agg.sort_values(["abs_pnl", "session_date"], ascending=[False, True])["session_date"].tolist()
     s2_dates = []
     for d in ranked:
         if d in picked:
