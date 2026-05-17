@@ -1,0 +1,46 @@
+{
+  "run_timestamp": "20260517_165641",
+  "variant": "window",
+  "trades_sha256": "1ccf859e3a580d78eb85cbc37a2cfa7159c3af59c3eb4bb58b5443d0aaf54feb",
+  "sample_sha256": "2ebd7512ef115d0a68e1c3a0cd4b9a05841f0c0b1ae97a12514833369f791484",
+  "ticks_path": "data/processed/ticks_databento_2026-01-01_to_2026-05-01.parquet",
+  "tick_coverage": {
+    "start": "2026-01-01 23:00:00+00:00",
+    "end": "2026-04-30 23:59:59.879767529+00:00",
+    "n_ticks": 83586999
+  },
+  "counts": {
+    "verified": 110,
+    "match": 99,
+    "bug_b_same_bar": 8,
+    "bug_b_next_bar": 0,
+    "phantom_entry": 3,
+    "other": 0,
+    "out_of_coverage": 798
+  },
+  "stop_outs": {
+    "n": 49,
+    "n_in_bug_b_band": 47,
+    "bug_b_same_bar": 2,
+    "bug_b_next_bar": 0,
+    "flagged_pre_fill_stop": 2,
+    "fade": 18,
+    "trend": 31
+  },
+  "phase1_overlap": {
+    "p1_dates_total": 40,
+    "p1_dates_in_window": 9,
+    "verified_on_p1": 26,
+    "verified_stops_on_p1": 13
+  },
+  "pnl": {
+    "sim_pnl_verified": 592.5,
+    "tick_pnl_verified": -128.0,
+    "pnl_delta": -720.5,
+    "delta_pct_of_sim": -121.60337552742615
+  },
+  "bracket": {
+    "stop_points": 40.0,
+    "target_points": 40.0
+  }
+}
