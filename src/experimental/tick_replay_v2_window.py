@@ -39,6 +39,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import zoneinfo
 from datetime import datetime
 from pathlib import Path
 
@@ -64,7 +65,13 @@ STOP_POINTS = 40.0
 TARGET_POINTS = 40.0
 POINT_VALUE_USD = 2.0
 ENTRY_MINUTE_SEC = 60
-FORCE_CLOSE_UTC_HM = (15, 30)
+# Force-close is 11:30 NY-LOCAL, not a fixed UTC offset. The NY ↔ UTC offset
+# changes with DST (EST = UTC-5, EDT = UTC-4), so fc_utc must be computed
+# per-trade from the session_date via zoneinfo. The same constant is
+# duplicated in tick_replay_v2.py — both verifiers are self-contained
+# experimental scripts and don't currently warrant a shared module.
+NY_TZ = zoneinfo.ZoneInfo("America/New_York")
+FORCE_CLOSE_NY_HM = (11, 30)
 
 MECH_MATCH = "MATCH"
 MECH_BUG_B_SAME_BAR = "BUG_B_SAME_BAR"
@@ -201,11 +208,14 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
         bug_b_stop = bool(pre_last.size and (pre_last >= stop_price).any())
         bug_b_target = bool(pre_last.size and (pre_last <= target_price).any())
 
+    # fc_utc is derived from the NY-local force-close clock time (11:30)
+    # converted to UTC via the session_date's zoneinfo, picking up EST/EDT.
     session_date = pd.Timestamp(trade["session_date"]).date()
-    fc_utc = pd.Timestamp(
-        f"{session_date} {FORCE_CLOSE_UTC_HM[0]:02d}:{FORCE_CLOSE_UTC_HM[1]:02d}:00",
-        tz="UTC",
+    fc_ny = pd.Timestamp(
+        f"{session_date} {FORCE_CLOSE_NY_HM[0]:02d}:{FORCE_CLOSE_NY_HM[1]:02d}:00",
+        tz=NY_TZ,
     )
+    fc_utc = fc_ny.tz_convert("UTC")
 
     after = ticks_df[
         (ticks_df["ts_utc"] > fill_ts) & (ticks_df["ts_utc"] < fc_utc)
