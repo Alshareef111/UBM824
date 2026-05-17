@@ -134,6 +134,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     if entry_time < tick_min or entry_time > tick_max:
         return {
             "tick_outcome": "OUT_OF_COVERAGE",
+            "trigger_above": None,
             "fill_ts": pd.NaT, "fill_price": np.nan,
             "tick_exit_ts": pd.NaT, "tick_exit_price": np.nan,
             "tick_pnl_dollars": np.nan,
@@ -151,14 +152,33 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     last_arr = em["last"].to_numpy()
     ts_arr = em["ts_utc"].to_numpy()
 
-    if side == "buy":
-        fill_pos = np.where(last_arr <= entry_price)[0]
+    # Fill direction follows the ORIGINAL setup's trigger condition, NOT the
+    # post-classifier side. classify_setups() in simulator_v2_4040.py sets
+    # limit_price to exactly one of cluster.low (cluster above market,
+    # trigger_above=True) or cluster.high (cluster below market,
+    # trigger_above=False). TREND/FADE can flip side without touching the
+    # trigger condition. Recover trigger_above from which cluster boundary
+    # entry_price equals — both are columns in the trades parquet and the
+    # bar sim assigns limit_price to exactly one with no arithmetic in
+    # between, so exact float equality holds.
+    cluster_low = float(trade["cluster_low"])
+    cluster_high = float(trade["cluster_high"])
+    if entry_price == cluster_low:
+        trigger_above = True   # original cluster above market; fill on price rising
+    elif entry_price == cluster_high:
+        trigger_above = False  # original cluster below market; fill on price falling
     else:
+        trigger_above = abs(entry_price - cluster_low) < abs(entry_price - cluster_high)
+
+    if trigger_above:
         fill_pos = np.where(last_arr >= entry_price)[0]
+    else:
+        fill_pos = np.where(last_arr <= entry_price)[0]
 
     if len(fill_pos) == 0:
         return {
             "tick_outcome": "NO_FILL",
+            "trigger_above": trigger_above,
             "fill_ts": pd.NaT, "fill_price": np.nan,
             "tick_exit_ts": pd.NaT, "tick_exit_price": np.nan,
             "tick_pnl_dollars": 0.0,
@@ -203,6 +223,12 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     first_stop = int(stop_hits[0]) if len(stop_hits) else None
     first_target = int(target_hits[0]) if len(target_hits) else None
 
+    # V2: exit_price uses the ACTUAL tick price that triggered the exit (not
+    # the credited stop/target level), and pnl_pts is computed from fill_price
+    # (the actual entry tick price), not the credited entry_price. This
+    # captures gap-fill and gap-through P&L effects that the bar-sim convention
+    # masks. tick_pnl_dollars will rarely match sim's pnl_dollars exactly even
+    # when outcomes agree; pnl_delta is the continuous P&L-discrepancy metric.
     if first_stop is None and first_target is None:
         fc_after = ticks_df[ticks_df["ts_utc"] >= fc_utc]
         if len(fc_after):
@@ -214,17 +240,17 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
             outcome = "force_close"
             exit_ts = pd.NaT
             exit_price = fill_price
-        pnl_pts = (exit_price - entry_price) if side == "buy" else (entry_price - exit_price)
+        pnl_pts = (exit_price - fill_price) if side == "buy" else (fill_price - exit_price)
     elif first_stop is None or (first_target is not None and first_target < first_stop):
         outcome = "target"
         exit_ts = pd.Timestamp(a_ts[first_target])
-        exit_price = target_price
-        pnl_pts = TARGET_POINTS
+        exit_price = float(a_last[first_target])
+        pnl_pts = (exit_price - fill_price) if side == "buy" else (fill_price - exit_price)
     else:
         outcome = "stop"
         exit_ts = pd.Timestamp(a_ts[first_stop])
-        exit_price = stop_price
-        pnl_pts = -STOP_POINTS
+        exit_price = float(a_last[first_stop])
+        pnl_pts = (exit_price - fill_price) if side == "buy" else (fill_price - exit_price)
 
     # Exit-bar chronology gap-through (audit p4b "chronology generalization"):
     # multi-bar trades with a stop/target exit where the bar sim's exit-bar
@@ -253,6 +279,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
 
     return {
         "tick_outcome": outcome,
+        "trigger_above": trigger_above,
         "fill_ts": fill_ts, "fill_price": fill_price,
         "tick_exit_ts": exit_ts, "tick_exit_price": exit_price,
         "tick_pnl_dollars": float(pnl_pts * POINT_VALUE_USD),
@@ -271,16 +298,19 @@ def attribute_mechanism(trade: dict, replay: dict) -> str:
 
     sim_outcome = trade["exit_reason"]
     tick_outcome = replay["tick_outcome"]
-    sim_pnl = float(trade["pnl_dollars"])
-    tick_pnl = float(replay["tick_pnl_dollars"]) if replay["tick_pnl_dollars"] is not None else 0.0
     same_bar = pd.Timestamp(trade["entry_time"]) == pd.Timestamp(trade["exit_time"])
 
-    # Bug B positive-evidence checks come BEFORE MATCH. Because replay_trade
-    # uses the credited stop/target level as exit_price (bar-sim convention),
-    # the gap-through case for next-bar Bug B would otherwise produce a P&L
-    # MATCH and never surface the chronology issue. Same-bar Bug B + outcome
-    # MATCH is rare to nonexistent per the audit, but the ordering is
-    # symmetric for consistency.
+    # MATCH = outcome-level agreement. Under V2 (replay uses actual tick fill
+    # and exit prices), P&L magnitudes rarely match sim exactly even when
+    # outcomes agree, because gap-fills and gap-throughs produce real price
+    # deltas vs the bar-sim's credited stop/target levels. The continuous
+    # P&L discrepancy is reported separately as the pnl_delta column on the
+    # reconciliation DataFrame and aggregated in summary['pnl'].
+    #
+    # Bug B positive-evidence checks come BEFORE MATCH so that chronology
+    # mismatches (where the bar sim credited a stop/target on a bar whose
+    # tick chronology contradicts it) are surfaced as Bug B, not silently
+    # promoted to MATCH by outcome agreement.
     if same_bar:
         if sim_outcome == "stop" and replay["bug_b_pre_fill_stop"]:
             return MECH_BUG_B_SAME_BAR
@@ -292,7 +322,7 @@ def attribute_mechanism(trade: dict, replay: dict) -> str:
         if sim_outcome == "target" and replay["bug_b_exit_bar_gap_target"]:
             return MECH_BUG_B_NEXT_BAR
 
-    if sim_outcome == tick_outcome and abs(sim_pnl - tick_pnl) < 0.01:
+    if sim_outcome == tick_outcome:
         return MECH_MATCH
 
     return MECH_OTHER
