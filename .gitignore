@@ -32,6 +32,12 @@ data/processed/ticks_overlap.parquet
 data/raw/MNQ*.LastT.txt
 data/raw/MNQ*.LastT
 
+# Databento DBN tick downloads (large, re-acquirable from Databento API).
+# Keep the corresponding processed parquet caches under data/processed/
+# subject to the data/processed/*.parquet rule below.
+data/raw/*.dbn
+data/raw/*.dbn.zst
+
 # Processed parquets (large/regenerable). Keep the locked baseline trades.parquet
 # as a sha256-pinned historical reference.
 data/processed/*.parquet
