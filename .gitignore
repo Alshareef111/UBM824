@@ -9,6 +9,14 @@ __pycache__/
 .vscode/
 *.swp
 
+# Secrets — API keys, credentials. NEVER commit.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+
 # Raw market data (large, regenerable from Databento; manifests stay tracked)
 data/raw/*.csv
 data/raw/*.txt
