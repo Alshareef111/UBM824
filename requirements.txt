@@ -1,0 +1,9 @@
+vectorbt>=1.0.0
+numba>=0.63,<0.66
+yfinance
+jupyter
+pyyaml
+pandas
+numpy
+plotly
+pyarrow
