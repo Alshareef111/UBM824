@@ -29,12 +29,25 @@ OUTRIGHT_PATTERN = re.compile(r"^MNQ[HMUZ]\d+$")
 
 # ─── Loading ──────────────────────────────────────────────────────────────
 
-def list_raw_csvs():
+def list_raw_csvs() -> list[Path]:
+    """List the Databento 1-min OHLCV CSVs in ``data/raw/``, sorted.
+
+    Returns:
+        List of Paths matching ``glbx-mdp3-*.ohlcv-1m.csv``.
+    """
     return sorted(DATA_RAW.glob("glbx-mdp3-*.ohlcv-1m.csv"))
 
 
-def load_raw_bars(verbose=True):
-    """Load all raw 1-min bars, drop calendar spreads, keep only outrights."""
+def load_raw_bars(verbose: bool = True) -> pd.DataFrame:
+    """Load all raw 1-min bars, drop calendar spreads, keep only outrights.
+
+    Args:
+        verbose: Print per-file progress and a summary.
+
+    Returns:
+        Concatenated DataFrame of outright MNQ bars sorted by
+        (ts_event, symbol). ``ts_event`` is tz-aware UTC.
+    """
     csvs = list_raw_csvs()
     if not csvs:
         raise FileNotFoundError(f"No glbx-mdp3-*.ohlcv-1m.csv in {DATA_RAW}")
@@ -69,12 +82,17 @@ def load_raw_bars(verbose=True):
 
 # ─── Roll detection ───────────────────────────────────────────────────────
 
-def build_front_map(bars):
-    """
-    Map every NY session_date to its front-month contract by volume.
+def build_front_map(bars: pd.DataFrame) -> pd.Series:
+    """Map every NY session_date to its front-month contract by volume.
 
     For each session, the contract with the highest aggregate 1-min volume
-    is the front-month. Returns a Series indexed by session_date.
+    is the front-month.
+
+    Args:
+        bars: Raw bars with ``ts_event`` (UTC), ``symbol``, ``volume``.
+
+    Returns:
+        Series of contract symbols indexed by ``session_date``.
     """
     df = bars[["ts_event", "symbol", "volume"]].copy()
     df["session_date"] = df["ts_event"].dt.tz_convert("America/New_York").dt.date
@@ -84,8 +102,16 @@ def build_front_map(bars):
     return front.set_index("session_date")["symbol"]
 
 
-def compute_rolls_from_volume(bars):
-    """Roll dates from volume crossover (kept for compare_rolls)."""
+def compute_rolls_from_volume(bars: pd.DataFrame) -> pd.DataFrame:
+    """Roll dates from volume crossover (kept for ``compare_rolls``).
+
+    Args:
+        bars: Raw bars (see ``build_front_map``).
+
+    Returns:
+        DataFrame with ``roll_date``, ``old_front``, ``new_front`` for each
+        session where the front-month contract changed.
+    """
     front_map = build_front_map(bars)
     s = front_map.sort_index()
     prev = s.shift(1)
@@ -100,7 +126,12 @@ def compute_rolls_from_volume(bars):
     return rolls
 
 
-def load_existing_rolls():
+def load_existing_rolls() -> pd.DataFrame:
+    """Load the externally-supplied roll table from ``data/raw``.
+
+    Returns:
+        DataFrame as stored in ``rolls_existing.parquet``.
+    """
     p = DATA_RAW / "rolls_existing.parquet"
     if not p.exists():
         raise FileNotFoundError(f"{p} not found — symlink missing?")
@@ -109,12 +140,21 @@ def load_existing_rolls():
 
 # ─── Continuous series ────────────────────────────────────────────────────
 
-def build_continuous_unadjusted(bars, front_map):
-    """
-    Keep only bars whose contract == front-month for that session_date.
+def build_continuous_unadjusted(
+    bars: pd.DataFrame,
+    front_map: pd.Series,
+) -> pd.DataFrame:
+    """Keep only bars whose contract == front-month for that session_date.
 
-    Returns df with columns: ts_utc, ts_ny, session_date, contract,
-                             open, high, low, close, volume
+    Args:
+        bars:      Raw bars (see ``load_raw_bars``).
+        front_map: Series of front-month symbols indexed by session_date
+                   (see ``build_front_map``).
+
+    Returns:
+        DataFrame with columns ``ts_utc``, ``ts_ny``, ``session_date``,
+        ``contract``, ``open``, ``high``, ``low``, ``close``, ``volume``,
+        sorted by ``ts_utc``.
     """
     df = bars.copy()
     df["session_date"] = df["ts_event"].dt.tz_convert("America/New_York").dt.date
@@ -130,7 +170,15 @@ def build_continuous_unadjusted(bars, front_map):
     return df[cols].sort_values("ts_utc").reset_index(drop=True)
 
 
-def save_processed(df, path=PROCESSED_PARQUET):
+def save_processed(df: pd.DataFrame, path: Path = PROCESSED_PARQUET) -> None:
+    """Write ``df`` to a snappy-compressed parquet at ``path``.
+
+    Args:
+        df:   DataFrame to persist (typically the continuous-unadjusted
+              bars from ``build_continuous_unadjusted``).
+        path: Destination parquet path. Parent directory is created if
+              missing.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, engine="pyarrow", compression="snappy")
     size_mb = path.stat().st_size / (1024 ** 2)
@@ -138,15 +186,19 @@ def save_processed(df, path=PROCESSED_PARQUET):
     print(f"File size: {size_mb:.1f} MB")
 
 
-def load_processed_bars(path=PROCESSED_PARQUET):
-    """
-    Load the canonical continuous bars, indexed by ts_ny (tz-aware ET).
+def load_processed_bars(path: Path = PROCESSED_PARQUET) -> pd.DataFrame:
+    """Load the canonical continuous bars, indexed by ts_ny (tz-aware ET).
 
     The NY-time index makes session-based logic ergonomic — between_time(),
     daily groupby on session_date, etc. The ts_utc column is preserved.
 
-    Returns a DataFrame indexed by ts_ny with columns:
-        ts_utc, session_date, contract, open, high, low, close, volume
+    Args:
+        path: Source parquet (defaults to ``PROCESSED_PARQUET``).
+
+    Returns:
+        DataFrame indexed by ``ts_ny`` (tz-aware ET) with columns
+        ``ts_utc``, ``session_date``, ``contract``, ``open``, ``high``,
+        ``low``, ``close``, ``volume``.
     """
     df = pd.read_parquet(path)
     df = df.set_index("ts_ny").sort_index()

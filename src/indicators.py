@@ -48,7 +48,21 @@ def _wilder_components(bars: pd.DataFrame, n: int):
 
 
 def compute_adx_series(bars: pd.DataFrame, n: int = 15) -> pd.Series:
-    """Wilder ADX(N) at every bar. Returns Series aligned with bars.index."""
+    """Wilder ADX(N) at every bar.
+
+    Uses pandas EWM with ``alpha=1/N, adjust=False`` to approximate
+    Wilder smoothing of TR / +DM / -DM, then folds them into +DI / -DI / DX
+    / ADX. No per-session reset: the EWM is continuous across overnight
+    bars (matches the QuantConnect implementation).
+
+    Args:
+        bars: DataFrame with ``high``, ``low``, ``close`` columns.
+        n:    Smoothing length.
+
+    Returns:
+        Series of ADX values aligned with ``bars.index``. Warm-up bars are
+        NaN; valid range is [0, 100].
+    """
     tr_s, plus_dm_s, minus_dm_s = _wilder_components(bars, n)
     plus_di = 100.0 * plus_dm_s / tr_s.replace(0, np.nan)
     minus_di = 100.0 * minus_dm_s / tr_s.replace(0, np.nan)
@@ -60,8 +74,16 @@ def compute_adx_series(bars: pd.DataFrame, n: int = 15) -> pd.Series:
 
 
 def compute_plus_minus_di(bars: pd.DataFrame, n: int = 15) -> pd.DataFrame:
-    """Wilder +DI(N) and -DI(N) at every bar. Returns DataFrame aligned with bars.index
-    with columns plus_di, minus_di. |+DI − -DI| gives the magnitude (spread)."""
+    """Wilder +DI(N) and -DI(N) at every bar.
+
+    Args:
+        bars: DataFrame with ``high``, ``low``, ``close`` columns.
+        n:    Smoothing length.
+
+    Returns:
+        DataFrame indexed like ``bars`` with columns ``plus_di``,
+        ``minus_di``. ``|+DI − -DI|`` is the directional spread.
+    """
     tr_s, plus_dm_s, minus_dm_s = _wilder_components(bars, n)
     plus_di = 100.0 * plus_dm_s / tr_s.replace(0, np.nan)
     minus_di = 100.0 * minus_dm_s / tr_s.replace(0, np.nan)

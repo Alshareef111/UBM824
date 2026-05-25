@@ -40,6 +40,10 @@ TICKS_OVERLAP_PARQUET = PROCESSED_DIR / "ticks_overlap.parquet"
 VERIFICATION_PARQUET = PROCESSED_DIR / "verification_results.parquet"
 
 # Helper to ensure all dirs exist (call from any script if needed)
-def ensure_dirs():
+def ensure_dirs() -> None:
+    """Create the standard data/results directory tree if missing.
+
+    Idempotent: silently no-ops when directories already exist.
+    """
     for d in [RAW_DIR, PROCESSED_DIR, CHARTS_DIR, ARCHIVE_DIR]:
         d.mkdir(parents=True, exist_ok=True)

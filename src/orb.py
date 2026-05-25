@@ -24,6 +24,14 @@ MIN_BARS_REQUIRED = 14  # allow up to one minute of missing data
 
 
 def in_orb_window(ts_ny: pd.Series) -> pd.Series:
+    """Boolean mask of timestamps inside the [09:30, 09:45) NY window.
+
+    Args:
+        ts_ny: Datetime Series in NY time.
+
+    Returns:
+        Boolean Series aligned with ``ts_ny``.
+    """
     h = ts_ny.dt.hour
     m = ts_ny.dt.minute
     after_start = (h > ORB_START_HM[0]) | ((h == ORB_START_HM[0]) & (m >= ORB_START_HM[1]))
@@ -32,6 +40,19 @@ def in_orb_window(ts_ny: pd.Series) -> pd.Series:
 
 
 def compute_orb(bars: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Compute per-session ORB high/low/close and partition by completeness.
+
+    Args:
+        bars: DataFrame with ``ts_ny``, ``session_date``, ``high``, ``low``,
+              ``close``.
+
+    Returns:
+        Pair of DataFrames ``(complete, excluded)``. ``complete`` carries
+        ``session_date``, ``orb_high``, ``orb_low``, ``orb_close``,
+        ``num_bars`` for sessions with >= MIN_BARS_REQUIRED bars in window.
+        ``excluded`` has the remaining sessions plus a ``reason`` column
+        (``no_bars_in_window`` or ``partial_window``).
+    """
     in_window = bars[in_orb_window(bars["ts_ny"])]
 
     # Bars are sorted by ts_utc globally, so within each session group the last

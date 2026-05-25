@@ -37,13 +37,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = PROJECT_ROOT / "results"
 
 
-def generate_trades(bars, candidates,
-                    stop_points=STOP_POINTS, target_points=TARGET_POINTS,
-                    entry_buffer=ENTRY_BUFFER,
-                    entry_window_end=ENTRY_WINDOW_END,
-                    forced_exit_time=FORCED_EXIT_TIME):
-    """
-    One trade max per session. First breakout wins.
+def generate_trades(
+    bars: pd.DataFrame,
+    candidates: pd.DataFrame,
+    stop_points: float = STOP_POINTS,
+    target_points: float = TARGET_POINTS,
+    entry_buffer: float = ENTRY_BUFFER,
+    entry_window_end: str = ENTRY_WINDOW_END,
+    forced_exit_time: str = FORCED_EXIT_TIME,
+) -> pd.DataFrame:
+    """One trade max per session. First breakout wins.
 
     Fill model: stop-buy/sell at trigger, but if bar opens past trigger
     (gap-open), fill at the bar's open price (worse). This avoids the
@@ -51,6 +54,24 @@ def generate_trades(bars, candidates,
 
     Exit model: stop/target/time. Entry bar IS checked for stop/target —
     conservative (stop wins if both in bar range).
+
+    Args:
+        bars:             NY-indexed bars with ``session_date``, OHLC.
+        candidates:       Per-session breakout candidates (output of
+                          ``build_candidates``).
+        stop_points:      Stop distance in points.
+        target_points:    Target distance in points.
+        entry_buffer:     Points added/subtracted from cluster high/low to
+                          form stop-trigger price.
+        entry_window_end: Latest ET time to take an entry (HH:MM).
+        forced_exit_time: Latest ET time to hold; close at this bar's
+                          ``close`` if neither stop nor target hit.
+
+    Returns:
+        DataFrame of trades with columns ``session_date``, ``side``,
+        ``entry_ts``, ``trigger_price``, ``entry_price``, ``gap_pts``,
+        ``stop_price``, ``target_price``, ``exit_ts``, ``exit_price``,
+        ``exit_reason``, ``pnl_points``, ``pnl_dollars``.
     """
     trades = []
     sessions = candidates["session_date"].unique()

@@ -15,6 +15,7 @@ Run from project root:
 
 import statistics
 import sys
+from typing import Optional
 
 import pandas as pd
 
@@ -27,7 +28,24 @@ MIN_CLUSTER_SIZE = 3
 
 # ─── Opening range ────────────────────────────────────────────────────────
 
-def compute_opening_range(bars, or_start="09:30", or_end="09:44"):
+def compute_opening_range(
+    bars: pd.DataFrame,
+    or_start: str = "09:30",
+    or_end: str = "09:44",
+) -> pd.DataFrame:
+    """Per-session opening-range high and low.
+
+    Args:
+        bars:     Bars indexed by tz-aware NY timestamps, with columns
+                  ``high``, ``low``, ``session_date``.
+        or_start: Inclusive ET start time (HH:MM) of the OR window.
+        or_end:   Inclusive ET end time (HH:MM); the bar timestamped
+                  09:44 covers [09:44, 09:45) i.e. up to the 09:45 print.
+
+    Returns:
+        DataFrame indexed by ``session_date`` with columns ``or_high``,
+        ``or_low``.
+    """
     or_bars = bars.between_time(or_start, or_end, inclusive="both")
     return or_bars.groupby("session_date").agg(
         or_high=("high", "max"),
@@ -35,11 +53,21 @@ def compute_opening_range(bars, or_start="09:30", or_end="09:44"):
     )
 
 
-def compute_or_close(bars, or_close_time="09:44"):
+def compute_or_close(
+    bars: pd.DataFrame,
+    or_close_time: str = "09:44",
+) -> pd.Series:
     """Per-session close at the final bar of the OR window.
 
     Used as the reference price for proximity gates (within_100, within_200).
-    Returned as a Series indexed by session_date.
+
+    Args:
+        bars:          Bars indexed by tz-aware NY timestamps with a
+                       ``session_date`` column and a ``close`` column.
+        or_close_time: ET time of the bar whose close is the reference.
+
+    Returns:
+        Series of close prices indexed by ``session_date``.
     """
     or_close_bars = bars.between_time(or_close_time, or_close_time,
                                        inclusive="both")
@@ -66,9 +94,32 @@ def _cluster_levels(levels, gap=CLUSTER_GAP, min_size=MIN_CLUSTER_SIZE):
     return clusters
 
 
-def build_cluster_pool(or_levels, lookback=LOOKBACK_SESSIONS,
-                       gap=CLUSTER_GAP, min_size=MIN_CLUSTER_SIZE):
-    """For each session, derive clusters from trailing `lookback` ORs."""
+def build_cluster_pool(
+    or_levels: pd.DataFrame,
+    lookback: int = LOOKBACK_SESSIONS,
+    gap: float = CLUSTER_GAP,
+    min_size: int = MIN_CLUSTER_SIZE,
+) -> pd.DataFrame:
+    """For each session, derive clusters from trailing ``lookback`` ORs.
+
+    Walks ``or_levels`` positionally; sessions with index < ``lookback``
+    are warm-up and produce no rows. For session i, the window is
+    ``or_levels.iloc[i - lookback : i]`` (strictly trailing — today's OR is
+    NOT in its own pool). The window's ``or_high`` + ``or_low`` values are
+    clustered by the chain rule (gap / min_size).
+
+    Args:
+        or_levels: DataFrame indexed by session_date with ``or_high``,
+                   ``or_low`` columns (output of ``compute_opening_range``).
+        lookback:  Number of trailing sessions to draw levels from.
+        gap:       Max gap between adjacent sorted levels.
+        min_size:  Minimum levels per emitted cluster.
+
+    Returns:
+        DataFrame with columns ``session_date``, ``cluster_id`` (within
+        session, 0-based), ``center``, ``median``, ``n_levels``, ``low``,
+        ``high``.
+    """
     sessions = or_levels.index.tolist()
     rows = []
     for i, session in enumerate(sessions):
@@ -96,9 +147,13 @@ CANDIDATE_COLS = ["session_date", "cluster_id", "center", "median", "n_levels",
                   "low", "high", "or_low", "or_high"]
 
 
-def build_candidates(or_levels, cluster_pool, gate="inside_OR", or_close=None):
-    """
-    Per-session candidates: clusters that pass the gate.
+def build_candidates(
+    or_levels: pd.DataFrame,
+    cluster_pool: pd.DataFrame,
+    gate: str = "inside_OR",
+    or_close: Optional[pd.Series] = None,
+) -> pd.DataFrame:
+    """Per-session candidates: clusters that pass the gate.
 
     Gates:
       inside_OR  — center in [or_low, or_high]  (original behavior)
@@ -106,11 +161,21 @@ def build_candidates(or_levels, cluster_pool, gate="inside_OR", or_close=None):
       within_200 — |center - or_close| <= 200   (locked-config gate)
       no_gate    — all clusters (sanity / max-density)
 
-    For proximity gates, `or_close` (Series indexed by session_date, from
+    For proximity gates, ``or_close`` (Series indexed by session_date, from
     compute_or_close) is required. Sessions missing or_close drop out.
 
-    Returns DataFrame with columns: session_date, cluster_id, center, median,
-    n_levels, low, high, or_low, or_high.
+    Args:
+        or_levels:    DataFrame indexed by session_date with ``or_high``,
+                      ``or_low`` columns.
+        cluster_pool: DataFrame from ``build_cluster_pool``.
+        gate:         One of ``inside_OR``, ``no_gate``, ``within_100``,
+                      ``within_200``.
+        or_close:     Required for proximity gates; Series indexed by
+                      session_date.
+
+    Returns:
+        DataFrame with columns ``session_date``, ``cluster_id``, ``center``,
+        ``median``, ``n_levels``, ``low``, ``high``, ``or_low``, ``or_high``.
     """
     base = or_levels.reset_index()[["session_date", "or_low", "or_high"]]
     needs_close = gate in ("within_100", "within_200")

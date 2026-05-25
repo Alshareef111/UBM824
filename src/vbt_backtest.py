@@ -51,11 +51,40 @@ def _trigger_anchors(day_cands, entry_location):
     raise ValueError(f"Unknown entry_location: {entry_location}")
 
 
-def generate_signals(bars, candidates,
-                     entry_buffer=ENTRY_BUFFER,
-                     entry_window_end=ENTRY_WINDOW_END,
-                     entry_location="high_low"):
-    """Mirror src/backtest.generate_trades entry logic, encoded as Series."""
+def generate_signals(
+    bars: pd.DataFrame,
+    candidates: pd.DataFrame,
+    entry_buffer: float = ENTRY_BUFFER,
+    entry_window_end: str = ENTRY_WINDOW_END,
+    entry_location: str = "high_low",
+) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Per-bar entry signals matching ``src/backtest.generate_trades``.
+
+    For each session in ``candidates``, walks bars in [09:45, entry_window_end].
+    The first bar where any long_trigger or short_trigger is hit fires an
+    entry: side is unambiguous when only one side hits; when both hit on the
+    same bar, the bar's own close-vs-open decides (long iff close >= open).
+    Long fill = ``max(trigger, bar.open)`` (gap-up worsens fill); short fill
+    = ``min(trigger, bar.open)``. Trigger price for long is the smallest
+    triggered long_trigger; for short, the largest triggered short_trigger.
+    Only one entry per session. ``force_exits`` marks the first bar with
+    time >= 11:30 within each session.
+
+    Args:
+        bars:              NY-indexed bars with ``session_date`` and OHLC.
+        candidates:        Per-session candidates from ``build_candidates``.
+        entry_buffer:      Points added to long-anchor / subtracted from
+                           short-anchor to form trigger prices.
+        entry_window_end:  Last ET HH:MM eligible as entry bar.
+        entry_location:    One of ``high_low`` | ``low_high`` | ``center`` |
+                           ``median`` — selects which candidate field
+                           supplies long/short anchors.
+
+    Returns:
+        Tuple ``(long_entries, short_entries, entry_prices, force_exits)``
+        of Series, each aligned with ``bars.index``. ``entry_prices`` is
+        NaN except at entry timestamps.
+    """
     idx = bars.index
     long_entries = pd.Series(False, index=idx)
     short_entries = pd.Series(False, index=idx)
@@ -200,9 +229,37 @@ def _manual_exits(bars, long_entries, short_entries, entry_prices,
     )
 
 
-def run_portfolio(bars, long_entries, short_entries, entry_prices, force_exits,
-                  stop_points=STOP_POINTS, target_points=TARGET_POINTS,
-                  init_cash=50000):
+def run_portfolio(
+    bars: pd.DataFrame,
+    long_entries: pd.Series,
+    short_entries: pd.Series,
+    entry_prices: pd.Series,
+    force_exits: pd.Series,
+    stop_points: float = STOP_POINTS,
+    target_points: float = TARGET_POINTS,
+    init_cash: float = 50000,
+) -> "vbt.Portfolio":
+    """Build a vectorbt Portfolio using the manual-exit walk.
+
+    Combines ``_manual_exits`` (stop/target/time exit logic that mirrors the
+    reference backtest) with ``vbt.Portfolio.from_signals``. Costs are zero
+    here — accounting (slippage, commission) is applied downstream by
+    ``summarize`` / ``_trade_dollars``.
+
+    Args:
+        bars:          NY-indexed OHLC bars with ``session_date``.
+        long_entries:  Boolean Series; True at long entry timestamps.
+        short_entries: Boolean Series; True at short entry timestamps.
+        entry_prices:  Fill prices at entry timestamps (NaN elsewhere).
+        force_exits:   Boolean Series; True at the 11:30 force-close bar.
+        stop_points:   Stop distance (points).
+        target_points: Target distance (points).
+        init_cash:     Starting cash.
+
+    Returns:
+        A ``vbt.Portfolio`` whose trade records reproduce the reference
+        backtest's per-trade P&L when fed to ``summarize``.
+    """
     long_exits, short_exits, exit_prices = _manual_exits(
         bars, long_entries, short_entries, entry_prices,
         stop_points, target_points, force_exits,
@@ -239,9 +296,29 @@ def _trade_dollars(trades_df, mnq_multiplier, commission_per_side, slippage_poin
     return pts * mnq_multiplier - 2 * commission_per_side
 
 
-def summarize(pf, mnq_multiplier=MNQ_MULTIPLIER,
-              commission_per_side=COMMISSION_PER_SIDE,
-              slippage_points=SLIPPAGE_POINTS):
+def summarize(
+    pf: "vbt.Portfolio",
+    mnq_multiplier: float = MNQ_MULTIPLIER,
+    commission_per_side: float = COMMISSION_PER_SIDE,
+    slippage_points: float = SLIPPAGE_POINTS,
+) -> dict:
+    """Reference-accounting metrics for a Portfolio's trade ledger.
+
+    Converts vbt trades to dollar P&L (applying ``slippage_points`` on each
+    side and ``commission_per_side`` × 2), then computes count / win-rate /
+    profit-factor / average / max-drawdown statistics.
+
+    Args:
+        pf:                  vbt Portfolio (typically from ``run_portfolio``).
+        mnq_multiplier:      Dollars per point (2.0 for MNQ).
+        commission_per_side: Round-trip commission is 2× this.
+        slippage_points:     Slippage applied on each fill.
+
+    Returns:
+        Dict with keys ``n_trades``, ``n_wins``, ``n_losses``, ``win_rate``,
+        ``net_dollars``, ``avg_trade_dollars``, ``avg_win``, ``avg_loss``,
+        ``win_loss_ratio``, ``profit_factor``, ``max_drawdown_dollars``.
+    """
     trades = pf.trades.records_readable
     dollars = _trade_dollars(trades, mnq_multiplier, commission_per_side, slippage_points)
     n = len(dollars)
@@ -314,18 +391,44 @@ def _sweep_with_signals(bars, long_e, short_e, entry_p, force_e,
     return pd.DataFrame(rows)
 
 
-def sweep_stop_target(bars, candidates, stop_range, target_range,
-                      entry_buffer=ENTRY_BUFFER, entry_window_end=ENTRY_WINDOW_END,
-                      init_cash=50000, mnq_multiplier=MNQ_MULTIPLIER,
-                      commission_per_side=COMMISSION_PER_SIDE,
-                      slippage_points=SLIPPAGE_POINTS):
-    """Per-combo loop over (stop, target). NOTE: vbt's sl_stop/tp_stop
-    broadcasting was tried first but diverges from src/backtest.py by ~18% on
-    avg win/loss (vbt's StopLimit can't fill at the exact stop/target price
-    when the next bar gaps past it, and vbt skips entry-bar intrabar checks).
-    Looping _manual_exits per combo costs ~1s/combo and matches the reference
-    exactly. For a 5x5 sweep that's ~25s — still cheap, and the numbers are
-    trustworthy."""
+def sweep_stop_target(
+    bars: pd.DataFrame,
+    candidates: pd.DataFrame,
+    stop_range: list[float],
+    target_range: list[float],
+    entry_buffer: float = ENTRY_BUFFER,
+    entry_window_end: str = ENTRY_WINDOW_END,
+    init_cash: float = 50000,
+    mnq_multiplier: float = MNQ_MULTIPLIER,
+    commission_per_side: float = COMMISSION_PER_SIDE,
+    slippage_points: float = SLIPPAGE_POINTS,
+) -> pd.DataFrame:
+    """Per-combo loop over (stop, target).
+
+    NOTE: vbt's sl_stop/tp_stop broadcasting was tried first but diverges
+    from ``src/backtest.py`` by ~18% on avg win/loss (vbt's StopLimit can't
+    fill at the exact stop/target price when the next bar gaps past it, and
+    vbt skips entry-bar intrabar checks). Looping ``_manual_exits`` per
+    combo costs ~1s/combo and matches the reference exactly. For a 5x5
+    sweep that's ~25s — still cheap, and the numbers are trustworthy.
+
+    Args:
+        bars:                NY-indexed bars with OHLC + ``session_date``.
+        candidates:          Per-session candidates.
+        stop_range:          Stop distances to sweep.
+        target_range:        Target distances to sweep.
+        entry_buffer:        See ``generate_signals``.
+        entry_window_end:    See ``generate_signals``.
+        init_cash:           Portfolio starting cash.
+        mnq_multiplier:      Dollars per point.
+        commission_per_side: Per-side commission ($).
+        slippage_points:     Per-side slippage (points).
+
+    Returns:
+        DataFrame with one row per (stop, target) combo and columns
+        ``stop``, ``target``, ``n_trades``, ``win_rate``, ``net_dollars``,
+        ``profit_factor``, ``max_drawdown_dollars``.
+    """
     long_e, short_e, entry_p, force_e = generate_signals(
         bars, candidates,
         entry_buffer=entry_buffer, entry_window_end=entry_window_end,
@@ -1974,13 +2077,23 @@ def _locked_metrics(pnl):
                 profit_factor=pf, max_drawdown=mdd, sharpe=sharpe)
 
 
-def build_locked_pipeline(bars=None, cfg=None):
+def build_locked_pipeline(
+    bars: pd.DataFrame | None = None,
+    cfg: dict | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series, pd.Series]:
     """Construct candidates + signals + force-exits for the locked config.
 
     This is the function a live signal generator should call: same
-    compute_opening_range, same compute_or_close, same build_cluster_pool,
-    same build_candidates(gate=within_200), same generate_signals.
-    Returns (bars, candidates, long_e, short_e, entry_p, force_e).
+    ``compute_opening_range``, same ``compute_or_close``, same
+    ``build_cluster_pool``, same ``build_candidates(gate=within_200)``,
+    same ``generate_signals``.
+
+    Args:
+        bars: Pre-loaded bars (skips parquet read if supplied).
+        cfg:  Override of ``LOCKED_CONFIG``; default uses the locked config.
+
+    Returns:
+        Tuple ``(bars, candidates, long_e, short_e, entry_p, force_e)``.
     """
     if cfg is None:
         cfg = LOCKED_CONFIG
@@ -2001,11 +2114,20 @@ def build_locked_pipeline(bars=None, cfg=None):
     return bars, cands, long_e, short_e, entry_p, force_e
 
 
-def run_locked(verbose=True):
+def run_locked(verbose: bool = True) -> dict:
     """Reproduce the locked-config metrics: 1394 trades, PF ~1.99, net ~$19,690.
 
-    Returns a metrics dict. Used by the CLI ('run_locked') and the
-    regression test (tests/test_locked.py).
+    Builds the locked pipeline, walks trades with Model A re-pricing
+    (entry always slips; target exits are limit fills with no exit slip),
+    then computes the regression-checked metrics.
+
+    Args:
+        verbose: Print metrics + reproduction-check table.
+
+    Returns:
+        Metrics dict with keys ``n_trades``, ``win_rate``, ``net_dollars``,
+        ``profit_factor``, ``max_drawdown``, ``sharpe``. Used by the CLI
+        (``run_locked``) and the regression test (``tests/test_locked.py``).
     """
     cfg = LOCKED_CONFIG
     if verbose:

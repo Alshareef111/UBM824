@@ -22,6 +22,22 @@ def find_clusters(
     max_gap: float = 3.0,
     min_size: int = 3,
 ) -> list[Cluster]:
+    """Group sorted levels into clusters by the chain rule.
+
+    Sorts ``levels`` ascending and walks the sorted sequence, extending the
+    current chain when the next level is within ``max_gap`` of the previous
+    one. A chain becomes a Cluster only if it has at least ``min_size``
+    levels; shorter chains are dropped. The gap test is inclusive
+    (``next - prev <= max_gap``).
+
+    Args:
+        levels:   Unsorted iterable of price levels. Duplicates are kept.
+        max_gap:  Maximum allowed gap between adjacent sorted levels.
+        min_size: Minimum levels required to emit a Cluster.
+
+    Returns:
+        List of Cluster, in ascending order by low.
+    """
     if not levels:
         return []
 
