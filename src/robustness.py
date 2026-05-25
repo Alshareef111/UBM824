@@ -1,7 +1,5 @@
 """Robustness checks on trades.parquet from the reverted best-config backtest."""
 
-from pathlib import Path
-
 import pandas as pd
 
 from paths import TRADES_PARQUET
@@ -30,12 +28,16 @@ def yearly_split(df: pd.DataFrame) -> None:
         exp_usd = sub["pnl_dollars"].mean() if n else 0.0
         rows.append((year, n, wr, pts, usd, exp_pts, exp_usd))
 
-    print(f"{'Year':<6} {'Trades':>7} {'WinRate':>8} {'PnL pts':>10} "
-          f"{'PnL $':>12} {'E[pts]':>9} {'E[$]':>9}")
+    print(
+        f"{'Year':<6} {'Trades':>7} {'WinRate':>8} {'PnL pts':>10} "
+        f"{'PnL $':>12} {'E[pts]':>9} {'E[$]':>9}"
+    )
     print("-" * 72)
     for year, n, wr, pts, usd, exp_pts, exp_usd in rows:
-        print(f"{year:<6} {n:>7} {wr:>7.1f}% {pts:>10.2f} "
-              f"{fmt_money(usd):>12} {exp_pts:>9.3f} {exp_usd:>9.3f}")
+        print(
+            f"{year:<6} {n:>7} {wr:>7.1f}% {pts:>10.2f} "
+            f"{fmt_money(usd):>12} {exp_pts:>9.3f} {exp_usd:>9.3f}"
+        )
     print()
 
 
@@ -125,7 +127,9 @@ def drawdown_analysis(df: pd.DataFrame) -> None:
     print(f"  Drawdown duration:   {underwater_days} days ({recovered_str})")
     print()
     print(f"  Current drawdown:    {fmt_money(current_dd)}")
-    print(f"  Days at current DD:  {current_dd_days} days since last peak ({final_peak_date.date()})")
+    print(
+        f"  Days at current DD:  {current_dd_days} days since last peak ({final_peak_date.date()})"
+    )
     print()
 
 

@@ -1,0 +1,81 @@
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [".venv", "archive", "notebooks"]
+
+[tool.ruff.lint]
+# Sane starter set:
+#   E, W  — pycodestyle errors / warnings
+#   F     — pyflakes (unused imports, undefined names, etc.)
+#   I     — isort (import sorting)
+#   B     — flake8-bugbear (likely bugs)
+#   UP    — pyupgrade (modern Python idioms — only the safe-by-default ones)
+select = ["E", "W", "F", "I", "B", "UP"]
+# Project-specific overrides:
+#   E501  — line too long: existing strings and table rows are formatted by
+#           hand; flag separately rather than auto-wrap.
+#   B008  — function-call default args: pandas/numpy callers use these
+#           intentionally.
+#   UP007 — "use X | Y instead of Union" — only matters if we ever lower
+#           target-version below 3.10; not actionable now.
+ignore = ["E501", "B008", "UP007"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: assert noise (B011), `zip()` strict opt-in (B905), short loop-var
+# names like `l` for low (E741). Cosmetic in fixtures.
+"tests/*" = ["B011", "B905", "E741"]
+
+# Experimental scripts: legacy structure with `sys.path` prepend before
+# imports (E402), cosmetic naming (E741, B007), zip strictness (B905),
+# lambda assignment style (E731), and dead extraction (F841). Out of scope.
+"src/experimental/*" = ["E402", "B007", "B905", "E741", "F841", "E731"]
+
+# Plotting / dashboard / simulator utilities — outside the locked-config
+# trade path. Surface separately if we ever reactivate them.
+"src/cluster_visual.py" = ["B007", "B904", "B905"]
+"src/dashboard_full.py" = ["F841"]
+"src/tick_simulator.py" = ["E741"]
+"src/visualize_trade.py" = ["E741"]
+
+# Production core: only CLI/diagnostic helpers trip these — the locked
+# pipeline itself (compute_opening_range → ... → _walk_trades_with_reason
+# → _model_a_pnl) is clean. The B023 at heatmap() is a benign capture:
+# the lambda is invoked synchronously by pivot.to_string() inside the same
+# iteration, so `fmt` always refers to the current iteration's value.
+"src/backtest.py" = ["F841"]
+"src/vbt_backtest.py" = ["B023", "B905", "E741"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "tests"]
+
+[tool.ruff.format]
+# Defaults: double quotes, 4-space indent, magic trailing comma.
+quote-style = "double"
+indent-style = "space"
+
+# ─── mypy (lenient — report only, don't block) ────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+files = ["src"]
+# Lenient by design: this is a first-pass scan to surface low-hanging issues.
+# Tighten incrementally per-module rather than globally.
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_return_any = false
+warn_unused_ignores = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+no_implicit_optional = false
+strict_optional = false
+show_error_codes = true
+pretty = true
+# Don't crawl into archived / experimental code while baselining.
+# Also skip src/visualize_trade.py — matplotlib Patch(color=...) stubs are
+# overly strict about Sequence[object], unrelated to the locked pipeline.
+exclude = [
+    "archive/",
+    "src/experimental/",
+    "src/visualize_trade.py",
+    ".venv/",
+    "notebooks/",
+]

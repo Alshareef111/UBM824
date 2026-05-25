@@ -9,11 +9,9 @@ Run after data_prep.py:
     python orb.py
 """
 
-from pathlib import Path
-
 import pandas as pd
 
-from paths import BARS_PARQUET, ORB_TABLE_PARQUET, ORB_EXCLUDED_PARQUET, ensure_dirs
+from paths import BARS_PARQUET, ORB_EXCLUDED_PARQUET, ORB_TABLE_PARQUET, ensure_dirs
 
 # 1-minute bar timestamped HH:MM represents the interval [HH:MM, HH:MM+1).
 # 9:30-9:45 NY = 15 bars timestamped 9:30 ... 9:44 (last bar's close = 9:45:00).

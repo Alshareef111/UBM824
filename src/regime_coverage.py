@@ -82,7 +82,7 @@ def main():
     for i, sess in enumerate(sessions):
         if i < LOOKBACK_SESSIONS:
             continue
-        window = or_levels.iloc[i - LOOKBACK_SESSIONS:i]
+        window = or_levels.iloc[i - LOOKBACK_SESSIONS : i]
         levels = window["or_high"].tolist() + window["or_low"].tolist()
         pool_min = float(min(levels))
         pool_max = float(max(levels))
@@ -95,20 +95,22 @@ def main():
         cand_count = sum(1 for c in centers if or_low <= c <= or_high)
         nd = nearest_distance(centers, or_low, or_high)
 
-        rows.append({
-            "session_date": sess,
-            "or_low": or_low,
-            "or_high": or_high,
-            "pool_min": pool_min,
-            "pool_max": pool_max,
-            "regime": classify(or_low, or_high, pool_min, pool_max),
-            "n_clusters_C": len(clusters),
-            "n_candidates_C": cand_count,
-            "zero_candidate": cand_count == 0,
-            "nearest_dist": nd,
-            "within_30pts": (not np.isnan(nd)) and nd <= 30,
-            "within_100pts": (not np.isnan(nd)) and nd <= 100,
-        })
+        rows.append(
+            {
+                "session_date": sess,
+                "or_low": or_low,
+                "or_high": or_high,
+                "pool_min": pool_min,
+                "pool_max": pool_max,
+                "regime": classify(or_low, or_high, pool_min, pool_max),
+                "n_clusters_C": len(clusters),
+                "n_candidates_C": cand_count,
+                "zero_candidate": cand_count == 0,
+                "nearest_dist": nd,
+                "within_30pts": (not np.isnan(nd)) and nd <= 30,
+                "within_100pts": (not np.isnan(nd)) and nd <= 100,
+            }
+        )
 
     df = pd.DataFrame(rows)
     df["session_date"] = pd.to_datetime(df["session_date"])
@@ -120,14 +122,18 @@ def main():
 
     # ── Per-year aggregate ───────────────────────────────────────────────
     df["year"] = df["session_date"].dt.year
-    yearly = df.groupby("year").agg(
-        n_sessions=("session_date", "size"),
-        pct_OR_ABOVE_POOL=("regime", lambda s: (s == "OR_ABOVE_POOL").mean() * 100),
-        pct_OR_IN_POOL=("regime", lambda s: (s == "OR_IN_POOL").mean() * 100),
-        pct_OR_BELOW_POOL=("regime", lambda s: (s == "OR_BELOW_POOL").mean() * 100),
-        pct_zero_candidate=("zero_candidate", lambda s: s.mean() * 100),
-        median_nearest_dist=("nearest_dist", "median"),
-    ).round(2)
+    yearly = (
+        df.groupby("year")
+        .agg(
+            n_sessions=("session_date", "size"),
+            pct_OR_ABOVE_POOL=("regime", lambda s: (s == "OR_ABOVE_POOL").mean() * 100),
+            pct_OR_IN_POOL=("regime", lambda s: (s == "OR_IN_POOL").mean() * 100),
+            pct_OR_BELOW_POOL=("regime", lambda s: (s == "OR_BELOW_POOL").mean() * 100),
+            pct_zero_candidate=("zero_candidate", lambda s: s.mean() * 100),
+            median_nearest_dist=("nearest_dist", "median"),
+        )
+        .round(2)
+    )
 
     print("Per-year regime coverage:")
     print(yearly.to_string())
@@ -140,16 +146,20 @@ def main():
     if runs:
         longest = max(runs, key=lambda r: r[2])
         ls_i, le_i, ll = longest
-        print(f"\nLongest zero-candidate streak: {ll} sessions  "
-              f"({pd.Timestamp(sess_arr[ls_i]).date()} → "
-              f"{pd.Timestamp(sess_arr[le_i]).date()})")
+        print(
+            f"\nLongest zero-candidate streak: {ll} sessions  "
+            f"({pd.Timestamp(sess_arr[ls_i]).date()} → "
+            f"{pd.Timestamp(sess_arr[le_i]).date()})"
+        )
 
         recent = runs[-1]
         rs_i, re_i, rl = recent
         tag = "TRAILING (still active)" if re_i == len(flags) - 1 else "ended earlier"
-        print(f"Most recent zero-candidate streak: {rl} sessions  "
-              f"({pd.Timestamp(sess_arr[rs_i]).date()} → "
-              f"{pd.Timestamp(sess_arr[re_i]).date()})  [{tag}]")
+        print(
+            f"Most recent zero-candidate streak: {rl} sessions  "
+            f"({pd.Timestamp(sess_arr[rs_i]).date()} → "
+            f"{pd.Timestamp(sess_arr[re_i]).date()})  [{tag}]"
+        )
     else:
         print("\nNo zero-candidate sessions in the scanned range.")
 

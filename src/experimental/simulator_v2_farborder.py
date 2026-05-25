@@ -27,13 +27,13 @@ same-bar stop-first conservative.
 
 This file does NOT modify simulator_v2.py.
 """
+
 from __future__ import annotations
 
 import sys
 from collections import deque
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -41,13 +41,14 @@ SRC_DIR = Path(__file__).resolve().parent.parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from clusters import Cluster, find_clusters  # noqa: E402
 from indicators.base import Classifier, Label  # noqa: E402
+
+from clusters import Cluster, find_clusters  # noqa: E402
 
 LOOKBACK = 200
 CLUSTER_GAP = 3.0
 MIN_CLUSTER_SIZE = 3
-STOP_POINTS = 40.0      # 40/40 R:R for this experiment
+STOP_POINTS = 40.0  # 40/40 R:R for this experiment
 TARGET_POINTS = 40.0
 POINT_VALUE_USD = 2.0
 
@@ -101,17 +102,27 @@ def classify_setups(clusters_today: list[Cluster], reference_price: float) -> li
     setups: list[Setup] = []
     for c in clusters_today:
         if c.low > reference_price:
-            setups.append(Setup(
-                fade_side="sell", cluster=c, limit_price=c.high, trigger_above=True,
-            ))
+            setups.append(
+                Setup(
+                    fade_side="sell",
+                    cluster=c,
+                    limit_price=c.high,
+                    trigger_above=True,
+                )
+            )
         elif c.high < reference_price:
-            setups.append(Setup(
-                fade_side="buy", cluster=c, limit_price=c.low, trigger_above=False,
-            ))
+            setups.append(
+                Setup(
+                    fade_side="buy",
+                    cluster=c,
+                    limit_price=c.low,
+                    trigger_above=False,
+                )
+            )
     return setups
 
 
-def find_first_fill(setups: list[Setup], bar: dict) -> Optional[Setup]:
+def find_first_fill(setups: list[Setup], bar: dict) -> Setup | None:
     candidates = []
     for s in setups:
         if s.triggered:
@@ -125,7 +136,7 @@ def find_first_fill(setups: list[Setup], bar: dict) -> Optional[Setup]:
     return min(candidates, key=lambda s: abs(s.limit_price - bar["open"]))
 
 
-def check_exit(side: str, entry_price: float, bar: dict) -> Optional[tuple[str, float]]:
+def check_exit(side: str, entry_price: float, bar: dict) -> tuple[str, float] | None:
     if side == "buy":
         stop = entry_price - STOP_POINTS
         target = entry_price + TARGET_POINTS
@@ -167,7 +178,7 @@ def make_trade(session_date, contract, open_pos, exit_time, exit_price, exit_rea
     )
 
 
-def find_force_close_bar(bars_today: pd.DataFrame) -> Optional[dict]:
+def find_force_close_bar(bars_today: pd.DataFrame) -> dict | None:
     match = bars_today[
         (bars_today["ts_ny"].dt.hour == FORCE_CLOSE_HM[0])
         & (bars_today["ts_ny"].dt.minute == FORCE_CLOSE_HM[1])
@@ -216,15 +227,19 @@ def simulate_session(
                 exit_result = check_exit(side, candidate.limit_price, bar)
                 if exit_result is not None:
                     reason, exit_price = exit_result
-                    trades.append(make_trade(session_date, contract, open_pos,
-                                             bar["ts_utc"], exit_price, reason))
+                    trades.append(
+                        make_trade(
+                            session_date, contract, open_pos, bar["ts_utc"], exit_price, reason
+                        )
+                    )
                     open_pos = None
         else:
             exit_result = check_exit(open_pos["side"], open_pos["entry_price"], bar)
             if exit_result is not None:
                 reason, exit_price = exit_result
-                trades.append(make_trade(session_date, contract, open_pos,
-                                         bar["ts_utc"], exit_price, reason))
+                trades.append(
+                    make_trade(session_date, contract, open_pos, bar["ts_utc"], exit_price, reason)
+                )
                 open_pos = None
 
     if open_pos is not None:
@@ -236,13 +251,16 @@ def simulate_session(
             last = bar_records[-1]
             exit_price = float(last["close"])
             exit_time = last["ts_utc"]
-        trades.append(make_trade(session_date, contract, open_pos,
-                                 exit_time, exit_price, "force_close"))
+        trades.append(
+            make_trade(session_date, contract, open_pos, exit_time, exit_price, "force_close")
+        )
 
     return trades
 
 
-def run_backtest(bars: pd.DataFrame, orb_table: pd.DataFrame, classifier: Classifier) -> list[Trade]:
+def run_backtest(
+    bars: pd.DataFrame, orb_table: pd.DataFrame, classifier: Classifier
+) -> list[Trade]:
     bars_by_session = {sd: g for sd, g in bars.groupby("session_date", sort=True)}
     orb_table = orb_table.sort_values("session_date").reset_index(drop=True)
 

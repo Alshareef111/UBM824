@@ -14,8 +14,8 @@ import pandas as pd
 
 from src.signals import build_candidates, build_cluster_pool
 
-
 # ───────────────────────── build_cluster_pool ─────────────────────────────
+
 
 def _or_levels(rows):
     """rows: list of (session_date, or_high, or_low). Returns DataFrame
@@ -34,18 +34,18 @@ def test_build_cluster_pool_windowing_and_chains():
     #   cluster [199,200] → two clusters.
     # i=4 (s5): trailing window = s3, s4 → ORs [200, 201, 199, 198]
     #   sorted=[198,199,200,201] → one cluster of 4.
-    or_levels = _or_levels([
-        (dt.date(2024, 1, 2), 100.0,  98.0),
-        (dt.date(2024, 1, 3),  99.0,  97.0),
-        (dt.date(2024, 1, 4), 200.0, 199.0),
-        (dt.date(2024, 1, 5), 201.0, 198.0),
-        (dt.date(2024, 1, 8), 300.0, 299.0),
-    ])
+    or_levels = _or_levels(
+        [
+            (dt.date(2024, 1, 2), 100.0, 98.0),
+            (dt.date(2024, 1, 3), 99.0, 97.0),
+            (dt.date(2024, 1, 4), 200.0, 199.0),
+            (dt.date(2024, 1, 5), 201.0, 198.0),
+            (dt.date(2024, 1, 8), 300.0, 299.0),
+        ]
+    )
     pool = build_cluster_pool(or_levels, lookback=2, gap=2.0, min_size=2)
 
-    assert len(pool) == 4, (
-        f"expected 4 rows (1 + 2 + 1), got {len(pool)}\n{pool}"
-    )
+    assert len(pool) == 4, f"expected 4 rows (1 + 2 + 1), got {len(pool)}\n{pool}"
 
     # s3 (i=2): one cluster spanning 97..100, n=4, center=98.5, median=98.5
     s3 = pool[pool["session_date"] == dt.date(2024, 1, 4)].reset_index(drop=True)
@@ -81,13 +81,15 @@ def test_build_cluster_pool_windowing_and_chains():
 def test_build_cluster_pool_gap_param_breaks_tight_chain():
     # Same 5 sessions, but gap=0.5 → every adjacent pair is >0.5 apart, so
     # NO chain of length >=2 survives. Pool is empty.
-    or_levels = _or_levels([
-        (dt.date(2024, 1, 2), 100.0,  98.0),
-        (dt.date(2024, 1, 3),  99.0,  97.0),
-        (dt.date(2024, 1, 4), 200.0, 199.0),
-        (dt.date(2024, 1, 5), 201.0, 198.0),
-        (dt.date(2024, 1, 8), 300.0, 299.0),
-    ])
+    or_levels = _or_levels(
+        [
+            (dt.date(2024, 1, 2), 100.0, 98.0),
+            (dt.date(2024, 1, 3), 99.0, 97.0),
+            (dt.date(2024, 1, 4), 200.0, 199.0),
+            (dt.date(2024, 1, 5), 201.0, 198.0),
+            (dt.date(2024, 1, 8), 300.0, 299.0),
+        ]
+    )
     pool = build_cluster_pool(or_levels, lookback=2, gap=0.5, min_size=2)
     assert len(pool) == 0, f"gap=0.5 should produce no clusters, got {len(pool)}"
     print("  OK  gap parameter (0.5) breaks all chains")
@@ -96,13 +98,15 @@ def test_build_cluster_pool_gap_param_breaks_tight_chain():
 def test_build_cluster_pool_min_size_filter():
     # Same 5 sessions; lookback=2, gap=2, but min_size=5 → no cluster
     # has 5 levels (largest is 4) → empty pool.
-    or_levels = _or_levels([
-        (dt.date(2024, 1, 2), 100.0,  98.0),
-        (dt.date(2024, 1, 3),  99.0,  97.0),
-        (dt.date(2024, 1, 4), 200.0, 199.0),
-        (dt.date(2024, 1, 5), 201.0, 198.0),
-        (dt.date(2024, 1, 8), 300.0, 299.0),
-    ])
+    or_levels = _or_levels(
+        [
+            (dt.date(2024, 1, 2), 100.0, 98.0),
+            (dt.date(2024, 1, 3), 99.0, 97.0),
+            (dt.date(2024, 1, 4), 200.0, 199.0),
+            (dt.date(2024, 1, 5), 201.0, 198.0),
+            (dt.date(2024, 1, 8), 300.0, 299.0),
+        ]
+    )
     pool = build_cluster_pool(or_levels, lookback=2, gap=2.0, min_size=5)
     assert len(pool) == 0, f"min_size=5 should produce no clusters, got {len(pool)}"
     print("  OK  min_size filter (5) drops all 4-level clusters")
@@ -110,11 +114,13 @@ def test_build_cluster_pool_min_size_filter():
 
 def test_build_cluster_pool_warmup_skips_when_too_few_sessions():
     # lookback=10, only 3 sessions → every i < lookback → empty pool.
-    or_levels = _or_levels([
-        (dt.date(2024, 1, 2), 100.0, 98.0),
-        (dt.date(2024, 1, 3),  99.0, 97.0),
-        (dt.date(2024, 1, 4), 101.0, 99.0),
-    ])
+    or_levels = _or_levels(
+        [
+            (dt.date(2024, 1, 2), 100.0, 98.0),
+            (dt.date(2024, 1, 3), 99.0, 97.0),
+            (dt.date(2024, 1, 4), 101.0, 99.0),
+        ]
+    )
     pool = build_cluster_pool(or_levels, lookback=10, gap=2.0, min_size=2)
     assert len(pool) == 0
     print("  OK  warm-up skip (lookback > available sessions) → empty")
@@ -122,26 +128,31 @@ def test_build_cluster_pool_warmup_skips_when_too_few_sessions():
 
 # ───────────────────────── build_candidates ────────────────────────────────
 
+
 def _candidate_fixture():
     """Two-session OR + a 5-row cluster pool that exercises every gate."""
-    or_levels = _or_levels([
-        (dt.date(2024, 1, 2), 110.0, 100.0),   # OR [100, 110]
-        (dt.date(2024, 1, 3), 210.0, 200.0),   # OR [200, 210]
-    ])
-    pool = pd.DataFrame([
-        # session_date, cluster_id, center, median, n_levels, low, high
-        # s1 #0: inside OR, ±0 from close (passes every non-empty gate)
-        (dt.date(2024, 1, 2), 0, 105.0, 105.0, 3, 104.0, 106.0),
-        # s1 #1: outside OR (center=120 > or_high=110), within_100 (diff=15)
-        (dt.date(2024, 1, 2), 1, 120.0, 120.0, 3, 119.0, 121.0),
-        # s1 #2: outside OR, within_200 only (diff=110 > 100, ≤ 200)
-        (dt.date(2024, 1, 2), 2, 215.0, 215.0, 3, 214.0, 216.0),
-        # s2 #0: inside OR but or_close is NaN → fails proximity gates
-        (dt.date(2024, 1, 3), 0, 205.0, 205.0, 3, 204.0, 206.0),
-        # s2 #1: outside OR, also fails proximity gates (NaN close)
-        (dt.date(2024, 1, 3), 1, 400.0, 400.0, 3, 399.0, 401.0),
-    ], columns=["session_date", "cluster_id", "center", "median",
-                "n_levels", "low", "high"])
+    or_levels = _or_levels(
+        [
+            (dt.date(2024, 1, 2), 110.0, 100.0),  # OR [100, 110]
+            (dt.date(2024, 1, 3), 210.0, 200.0),  # OR [200, 210]
+        ]
+    )
+    pool = pd.DataFrame(
+        [
+            # session_date, cluster_id, center, median, n_levels, low, high
+            # s1 #0: inside OR, ±0 from close (passes every non-empty gate)
+            (dt.date(2024, 1, 2), 0, 105.0, 105.0, 3, 104.0, 106.0),
+            # s1 #1: outside OR (center=120 > or_high=110), within_100 (diff=15)
+            (dt.date(2024, 1, 2), 1, 120.0, 120.0, 3, 119.0, 121.0),
+            # s1 #2: outside OR, within_200 only (diff=110 > 100, ≤ 200)
+            (dt.date(2024, 1, 2), 2, 215.0, 215.0, 3, 214.0, 216.0),
+            # s2 #0: inside OR but or_close is NaN → fails proximity gates
+            (dt.date(2024, 1, 3), 0, 205.0, 205.0, 3, 204.0, 206.0),
+            # s2 #1: outside OR, also fails proximity gates (NaN close)
+            (dt.date(2024, 1, 3), 1, 400.0, 400.0, 3, 399.0, 401.0),
+        ],
+        columns=["session_date", "cluster_id", "center", "median", "n_levels", "low", "high"],
+    )
     or_close = pd.Series(
         {dt.date(2024, 1, 2): 105.0, dt.date(2024, 1, 3): float("nan")},
         name="or_close",
@@ -159,9 +170,7 @@ def test_build_candidates_inside_OR():
     cands = build_candidates(or_levels, pool, gate="inside_OR")
     # s1#0 (center=105 in [100,110]) ✓; s2#0 (center=205 in [200,210]) ✓.
     expected = {(dt.date(2024, 1, 2), 0), (dt.date(2024, 1, 3), 0)}
-    assert _key_set(cands) == expected, (
-        f"inside_OR: expected {expected}, got {_key_set(cands)}"
-    )
+    assert _key_set(cands) == expected, f"inside_OR: expected {expected}, got {_key_set(cands)}"
     # Check or_low/or_high columns are merged correctly.
     row = cands[cands["session_date"] == dt.date(2024, 1, 2)].iloc[0]
     assert row["or_low"] == 100.0 and row["or_high"] == 110.0
@@ -177,28 +186,20 @@ def test_build_candidates_no_gate_passes_everything():
 
 def test_build_candidates_within_100():
     or_levels, pool, or_close = _candidate_fixture()
-    cands = build_candidates(or_levels, pool,
-                              gate="within_100", or_close=or_close)
+    cands = build_candidates(or_levels, pool, gate="within_100", or_close=or_close)
     # s1#0 (|105-105|=0) ✓, s1#1 (|120-105|=15) ✓, s1#2 (|215-105|=110) ✗.
     # s2 sessions ✗ because or_close is NaN.
     expected = {(dt.date(2024, 1, 2), 0), (dt.date(2024, 1, 2), 1)}
-    assert _key_set(cands) == expected, (
-        f"within_100: expected {expected}, got {_key_set(cands)}"
-    )
+    assert _key_set(cands) == expected, f"within_100: expected {expected}, got {_key_set(cands)}"
     print("  OK  gate=within_100 (2 candidates; NaN close drops s2)")
 
 
 def test_build_candidates_within_200():
     or_levels, pool, or_close = _candidate_fixture()
-    cands = build_candidates(or_levels, pool,
-                              gate="within_200", or_close=or_close)
+    cands = build_candidates(or_levels, pool, gate="within_200", or_close=or_close)
     # s1#0 ✓, s1#1 ✓, s1#2 (110 ≤ 200) ✓.  s2 ✗ (NaN close).
-    expected = {(dt.date(2024, 1, 2), 0),
-                (dt.date(2024, 1, 2), 1),
-                (dt.date(2024, 1, 2), 2)}
-    assert _key_set(cands) == expected, (
-        f"within_200: expected {expected}, got {_key_set(cands)}"
-    )
+    expected = {(dt.date(2024, 1, 2), 0), (dt.date(2024, 1, 2), 1), (dt.date(2024, 1, 2), 2)}
+    assert _key_set(cands) == expected, f"within_200: expected {expected}, got {_key_set(cands)}"
     print("  OK  gate=within_200 (3 candidates; NaN close drops s2)")
 
 

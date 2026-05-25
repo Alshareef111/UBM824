@@ -69,6 +69,7 @@ def _build(sorted_chain: list[float]) -> Cluster:
 
 
 if __name__ == "__main__":
+
     def show(label, result):
         print(f"{label}")
         if not result:

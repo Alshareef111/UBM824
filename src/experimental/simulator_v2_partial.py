@@ -25,13 +25,13 @@ TREND inversions). Runner target = nearest OTHER cluster in trade direction.
 Does NOT modify simulator_v2.py or any other existing file. Uses the same
 clusters / classifiers / paths / walk_forward modules read-only.
 """
+
 from __future__ import annotations
 
 import sys
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -40,8 +40,9 @@ SRC_DIR = Path(__file__).resolve().parent.parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from clusters import Cluster, find_clusters  # noqa: E402
 from indicators.base import Classifier, Label  # noqa: E402
+
+from clusters import Cluster, find_clusters  # noqa: E402
 
 LOOKBACK = 200
 CLUSTER_GAP = 3.0
@@ -74,9 +75,9 @@ class PartialTrade:
     cluster_size: int
     cluster_label: str
 
-    p2_target_price: Optional[float]
-    p2_target_cluster_low: Optional[float]
-    p2_target_cluster_high: Optional[float]
+    p2_target_price: float | None
+    p2_target_cluster_low: float | None
+    p2_target_cluster_high: float | None
 
     p1_exit_time: pd.Timestamp
     p1_exit_price: float
@@ -95,8 +96,8 @@ class PartialTrade:
     p2_final_stop_price: float
     p2_stop_history: str
 
-    pnl_points: float          # p1 + p2 (per-contract sum)
-    pnl_dollars: float         # p1_pnl_dollars + p2_pnl_dollars (2-contract aggregate)
+    pnl_points: float  # p1 + p2 (per-contract sum)
+    pnl_dollars: float  # p1_pnl_dollars + p2_pnl_dollars (2-contract aggregate)
     initial_stop_points: float
 
 
@@ -114,11 +115,13 @@ def classify_setups(clusters_today: list[Cluster], reference_price: float) -> li
         if c.low > reference_price:
             setups.append(Setup(fade_side="sell", cluster=c, limit_price=c.low, trigger_above=True))
         elif c.high < reference_price:
-            setups.append(Setup(fade_side="buy", cluster=c, limit_price=c.high, trigger_above=False))
+            setups.append(
+                Setup(fade_side="buy", cluster=c, limit_price=c.high, trigger_above=False)
+            )
     return setups
 
 
-def find_first_fill(setups: list[Setup], bar: dict) -> Optional[Setup]:
+def find_first_fill(setups: list[Setup], bar: dict) -> Setup | None:
     candidates = []
     for s in setups:
         if s.triggered:
@@ -137,7 +140,7 @@ def find_runner_target(
     entry_cluster: Cluster,
     entry_price: float,
     side: str,
-) -> tuple[Optional[float], Optional[Cluster]]:
+) -> tuple[float | None, Cluster | None]:
     """Nearest cluster in trade direction, excluding entry cluster.
 
     BUY: cluster with cluster.low > entry_price (sits above entry). Target = cluster.low.
@@ -178,8 +181,8 @@ def check_leg_exit(
     entry_price: float,
     bar: dict,
     stop_points: float,
-    target_price: Optional[float],
-) -> Optional[tuple[str, float]]:
+    target_price: float | None,
+) -> tuple[str, float] | None:
     """Stop-first conservative for one leg.
 
     target_price is the explicit absolute price level (NOT a points offset),
@@ -209,7 +212,7 @@ def pnl_points_calc(side: str, entry: float, exit_: float) -> float:
     return (exit_ - entry) if side == "buy" else (entry - exit_)
 
 
-def find_force_close_bar(bars_today: pd.DataFrame) -> Optional[dict]:
+def find_force_close_bar(bars_today: pd.DataFrame) -> dict | None:
     match = bars_today[
         (bars_today["ts_ny"].dt.hour == FORCE_CLOSE_HM[0])
         & (bars_today["ts_ny"].dt.minute == FORCE_CLOSE_HM[1])
@@ -236,7 +239,7 @@ def simulate_session(
     in_window = bars_today[in_trade_window(bars_today["ts_ny"])]
     bar_records = in_window.to_dict("records")
 
-    open_pos: Optional[dict] = None
+    open_pos: dict | None = None
 
     for i, bar in enumerate(bar_records):
         if open_pos is None:
@@ -246,8 +249,10 @@ def simulate_session(
                 if label == Label.SKIP:
                     candidate.triggered = True
                     continue
-                side = candidate.fade_side if label == Label.FADE else (
-                    "buy" if candidate.fade_side == "sell" else "sell"
+                side = (
+                    candidate.fade_side
+                    if label == Label.FADE
+                    else ("buy" if candidate.fade_side == "sell" else "sell")
                 )
                 candidate.triggered = True
                 entry_price = candidate.limit_price
@@ -268,8 +273,8 @@ def simulate_session(
                     "p1_target_price": p1_target_price,
                     "p2_target_price": p2_target_price,
                     "p2_target_cluster": p2_target_cluster,
-                    "p1_exit": None,        # set when p1 closes
-                    "p2_exit": None,        # set when p2 closes
+                    "p1_exit": None,  # set when p1 closes
+                    "p2_exit": None,  # set when p2 closes
                     "p2_be_fired": False,
                     "p2_be_effective_from_idx": None,  # bar idx from which BE-stop applies
                 }
@@ -281,7 +286,8 @@ def simulate_session(
                 if exit_p1 is not None:
                     reason, px = exit_p1
                     open_pos["p1_exit"] = {
-                        "time": bar["ts_utc"], "price": px,
+                        "time": bar["ts_utc"],
+                        "price": px,
                         "reason": "stop" if reason == "stop" else "target_40",
                         "bar_idx": i,
                     }
@@ -291,15 +297,17 @@ def simulate_session(
                 if exit_p2 is not None:
                     reason, px = exit_p2
                     open_pos["p2_exit"] = {
-                        "time": bar["ts_utc"], "price": px,
+                        "time": bar["ts_utc"],
+                        "price": px,
                         "reason": "stop" if reason == "stop" else "target_cluster",
                         "bar_idx": i,
-                        "stop_at_exit": entry_price - stop_points if side == "buy" else entry_price + stop_points,
+                        "stop_at_exit": entry_price - stop_points
+                        if side == "buy"
+                        else entry_price + stop_points,
                     }
 
                 # If p1 hit +target on entry bar, BE engages from next bar.
-                if (open_pos["p1_exit"] is not None
-                        and open_pos["p1_exit"]["reason"] == "target_40"):
+                if open_pos["p1_exit"] is not None and open_pos["p1_exit"]["reason"] == "target_40":
                     open_pos["p2_be_fired"] = True
                     open_pos["p2_be_effective_from_idx"] = i + 1
 
@@ -310,9 +318,11 @@ def simulate_session(
 
         else:
             # Determine current p2 stop level for this bar
-            if (open_pos["p2_be_fired"]
-                    and open_pos["p2_be_effective_from_idx"] is not None
-                    and i >= open_pos["p2_be_effective_from_idx"]):
+            if (
+                open_pos["p2_be_fired"]
+                and open_pos["p2_be_effective_from_idx"] is not None
+                and i >= open_pos["p2_be_effective_from_idx"]
+            ):
                 p2_stop_pts = 0.0  # BE: stop at entry price
             else:
                 p2_stop_pts = stop_points
@@ -328,7 +338,8 @@ def simulate_session(
                 if exit_p1 is not None:
                     reason, px = exit_p1
                     open_pos["p1_exit"] = {
-                        "time": bar["ts_utc"], "price": px,
+                        "time": bar["ts_utc"],
+                        "price": px,
                         "reason": "stop" if reason == "stop" else "target_40",
                         "bar_idx": i,
                     }
@@ -348,12 +359,17 @@ def simulate_session(
                     else:
                         p2_reason = "target_cluster"
                     open_pos["p2_exit"] = {
-                        "time": bar["ts_utc"], "price": px,
+                        "time": bar["ts_utc"],
+                        "price": px,
                         "reason": p2_reason,
                         "bar_idx": i,
                         "stop_at_exit": (
-                            entry_price if p2_stop_pts == 0.0 else (
-                                entry_price - stop_points if side == "buy" else entry_price + stop_points
+                            entry_price
+                            if p2_stop_pts == 0.0
+                            else (
+                                entry_price - stop_points
+                                if side == "buy"
+                                else entry_price + stop_points
                             )
                         ),
                     }
@@ -381,23 +397,33 @@ def simulate_session(
             # p1 never hit +40. Per spec: p1 force-closes; p2 also force-closes; no BE state.
             open_pos["p2_be_fired"] = False
             open_pos["p1_exit"] = {
-                "time": fc_time, "price": fc_price,
-                "reason": "force_close", "bar_idx": -1,
+                "time": fc_time,
+                "price": fc_price,
+                "reason": "force_close",
+                "bar_idx": -1,
             }
             open_pos["p2_exit"] = {
-                "time": fc_time, "price": fc_price,
-                "reason": "force_close", "bar_idx": -1,
-                "stop_at_exit": entry_price - stop_points if side == "buy" else entry_price + stop_points,
+                "time": fc_time,
+                "price": fc_price,
+                "reason": "force_close",
+                "bar_idx": -1,
+                "stop_at_exit": entry_price - stop_points
+                if side == "buy"
+                else entry_price + stop_points,
             }
         else:
             # p1 already exited at +40 earlier. p2 still open. Force-close p2.
             assert open_pos["p2_exit"] is None
-            p2_stop_at_close = entry_price if open_pos["p2_be_fired"] else (
-                entry_price - stop_points if side == "buy" else entry_price + stop_points
+            p2_stop_at_close = (
+                entry_price
+                if open_pos["p2_be_fired"]
+                else (entry_price - stop_points if side == "buy" else entry_price + stop_points)
             )
             open_pos["p2_exit"] = {
-                "time": fc_time, "price": fc_price,
-                "reason": "force_close", "bar_idx": -1,
+                "time": fc_time,
+                "price": fc_price,
+                "reason": "force_close",
+                "bar_idx": -1,
                 "stop_at_exit": p2_stop_at_close,
             }
 
@@ -494,8 +520,13 @@ def run_backtest(
 
         bars_today = bars_by_session[session_date]
         trades = simulate_session(
-            bars_today, setups, session_date, classifier,
-            clusters_today, stop_points, target_p1_points,
+            bars_today,
+            setups,
+            session_date,
+            classifier,
+            clusters_today,
+            stop_points,
+            target_p1_points,
         )
         all_trades.extend(trades)
 

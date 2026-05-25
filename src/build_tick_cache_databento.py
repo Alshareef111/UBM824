@@ -31,6 +31,7 @@ Defaults are wired for the Tight-window Databento purchase:
 For other date ranges, run with --input / --output overrides (or edit
 the constants below).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,10 +54,18 @@ from data_prep import build_adjustments  # noqa: E402
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT,
-                        help="Databento dbn.zst file (default: Tight window)")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
-                        help="Output parquet path (default: matches input)")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=DEFAULT_INPUT,
+        help="Databento dbn.zst file (default: Tight window)",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="Output parquet path (default: matches input)",
+    )
     args = parser.parse_args()
 
     in_path: Path = args.input
@@ -110,11 +119,17 @@ def main() -> None:
         print("  WARNING: no ts_event column; falling back to ts_recv (the index)")
         ts_series = df.index.to_series()
     else:
-        sys.exit(f"FAIL: cannot identify trade-time column. Columns: {list(df.columns)}, "
-                 f"index: {df.index.name}")
+        sys.exit(
+            f"FAIL: cannot identify trade-time column. Columns: {list(df.columns)}, "
+            f"index: {df.index.name}"
+        )
 
     # Normalize ts_series to UTC Timestamp
-    ts_utc = pd.to_datetime(ts_series, utc=True) if not pd.api.types.is_datetime64_any_dtype(ts_series) else ts_series
+    ts_utc = (
+        pd.to_datetime(ts_series, utc=True)
+        if not pd.api.types.is_datetime64_any_dtype(ts_series)
+        else ts_series
+    )
     if ts_utc.dt.tz is None:
         ts_utc = ts_utc.dt.tz_localize("UTC")
 
@@ -152,8 +167,7 @@ def main() -> None:
     boundary_ns = rolls_sorted["ref_ts"].astype("int64").to_numpy()
     # contract_by_bin[0] = oldest contract (active before any roll)
     # contract_by_bin[i] = rolls_sorted.iloc[i-1].new_contract (active after roll i-1)
-    contract_by_bin = ([rolls_sorted.iloc[0]["old_contract"]]
-                       + rolls_sorted["new_contract"].tolist())
+    contract_by_bin = [rolls_sorted.iloc[0]["old_contract"]] + rolls_sorted["new_contract"].tolist()
     contract_by_bin_arr = np.array(contract_by_bin, dtype=object)
 
     ts_utc_reset = ts_utc.reset_index(drop=True)
@@ -165,23 +179,29 @@ def main() -> None:
     unmapped = int(offset.isna().sum())
     if unmapped:
         unique_unmapped = sorted(set(pd.Series(contracts[offset.isna().values]).unique()))
-        sys.exit(f"FAIL: {unmapped:,} ticks mapped to contracts not in adjustment table: "
-                 f"{unique_unmapped}")
+        sys.exit(
+            f"FAIL: {unmapped:,} ticks mapped to contracts not in adjustment table: "
+            f"{unique_unmapped}"
+        )
 
     contract_series = pd.Series(contracts, name="contract")
     print(f"  Derived contract counts: {dict(contract_series.value_counts())}")
-    print(f"  Offset counts (pts -> n ticks): "
-          f"{dict(offset.value_counts().sort_index(ascending=False))}")
+    print(
+        f"  Offset counts (pts -> n ticks): "
+        f"{dict(offset.value_counts().sort_index(ascending=False))}"
+    )
     adjusted_price = price.reset_index(drop=True) + offset
 
-    out = pd.DataFrame({
-        "ts_utc": ts_utc_reset,
-        "last": adjusted_price,
-        "contract": contract_series,  # derived from ts_event via rolls.parquet
-        "bid": pd.Series([np.nan] * raw_rows, dtype="float64"),
-        "ask": pd.Series([np.nan] * raw_rows, dtype="float64"),
-        "volume": volume.reset_index(drop=True),
-    })
+    out = pd.DataFrame(
+        {
+            "ts_utc": ts_utc_reset,
+            "last": adjusted_price,
+            "contract": contract_series,  # derived from ts_event via rolls.parquet
+            "bid": pd.Series([np.nan] * raw_rows, dtype="float64"),
+            "ask": pd.Series([np.nan] * raw_rows, dtype="float64"),
+            "volume": volume.reset_index(drop=True),
+        }
+    )
 
     # Drop any row with missing ts or price (cannot be used by verifier)
     before_drop = len(out)

@@ -7,12 +7,10 @@ For each overlap trade (session_date 2026-03-17..2026-05-01):
   - flag mismatches and compute the P&L impact
 """
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
-from paths import TRADES_PARQUET, TICKS_OVERLAP_PARQUET, VERIFICATION_PARQUET, ensure_dirs
+from paths import TICKS_OVERLAP_PARQUET, TRADES_PARQUET, VERIFICATION_PARQUET, ensure_dirs
 
 OVERLAP_START_DATE = pd.Timestamp("2026-03-17")
 OVERLAP_END_DATE = pd.Timestamp("2026-05-01")
@@ -147,10 +145,14 @@ def main() -> None:
     ticks["ts_utc"] = pd.to_datetime(ticks["ts_utc"], utc=True)
     ticks = ticks.sort_values("ts_utc").reset_index(drop=True)
 
-    overlap = trades[
-        (trades["session_date"] >= OVERLAP_START_DATE)
-        & (trades["session_date"] <= OVERLAP_END_DATE)
-    ].copy().reset_index(drop=True)
+    overlap = (
+        trades[
+            (trades["session_date"] >= OVERLAP_START_DATE)
+            & (trades["session_date"] <= OVERLAP_END_DATE)
+        ]
+        .copy()
+        .reset_index(drop=True)
+    )
 
     print(f"Verifying {len(overlap)} overlap trades against {len(ticks):,} ticks\n")
 
@@ -177,7 +179,9 @@ def main() -> None:
             te = row["tick_exit_price"]
             if te is None:
                 return float(row["pnl_dollars"])
-            return ((te - row["entry_price"]) if side == "buy" else (row["entry_price"] - te)) * POINT_VALUE_USD
+            return (
+                (te - row["entry_price"]) if side == "buy" else (row["entry_price"] - te)
+            ) * POINT_VALUE_USD
         if row["tick_outcome"] == "stop":
             return -STOP_POINTS * POINT_VALUE_USD
         return TARGET_POINTS * POINT_VALUE_USD
@@ -195,7 +199,7 @@ def main() -> None:
     print("VERIFICATION SUMMARY")
     print("=" * 76)
     print(f"Total overlap trades:    {total}")
-    print(f"Matches:                 {matches} ({matches/total*100:.1f}%)")
+    print(f"Matches:                 {matches} ({matches / total * 100:.1f}%)")
     print(f"Mismatches:              {mismatches}")
     print(f"NO_FILL flags:           {no_fill}")
     print()
@@ -209,24 +213,34 @@ def main() -> None:
         print("-" * 76)
         mm = overlap[~overlap["match"]]
         for _, r in mm.iterrows():
-            print(f"  {r['session_date'].date()}  {r['side'].upper():4s}  "
-                  f"entry={r['entry_price']:.2f}  stop={r['stop_price']:.2f}  "
-                  f"target={r['target_price']:.2f}")
-            print(f"      sim={r['sim_outcome']} ({fmt_money(r['pnl_dollars'])})    "
-                  f"tick={r['tick_outcome']} ({fmt_money(r['real_pnl'])})")
-            print(f"      entry_time={r['entry_time']}  fill_ts={r['fill_ts']}  "
-                  f"sim_exit={r['exit_time']}  tick_exit={r['tick_exit_ts']}")
+            print(
+                f"  {r['session_date'].date()}  {r['side'].upper():4s}  "
+                f"entry={r['entry_price']:.2f}  stop={r['stop_price']:.2f}  "
+                f"target={r['target_price']:.2f}"
+            )
+            print(
+                f"      sim={r['sim_outcome']} ({fmt_money(r['pnl_dollars'])})    "
+                f"tick={r['tick_outcome']} ({fmt_money(r['real_pnl'])})"
+            )
+            print(
+                f"      entry_time={r['entry_time']}  fill_ts={r['fill_ts']}  "
+                f"sim_exit={r['exit_time']}  tick_exit={r['tick_exit_ts']}"
+            )
             print()
 
     print("PER-TRADE TABLE")
     print("-" * 76)
-    print(f"{'Date':<12}{'Side':<6}{'Entry':>10}{'Sim':>14}{'Tick':>14}{'Match':>7}"
-          f"{'SimPnL':>10}{'RealPnL':>10}")
+    print(
+        f"{'Date':<12}{'Side':<6}{'Entry':>10}{'Sim':>14}{'Tick':>14}{'Match':>7}"
+        f"{'SimPnL':>10}{'RealPnL':>10}"
+    )
     for _, r in overlap.iterrows():
         match_s = "Y" if r["match"] else "N"
-        print(f"{str(r['session_date'].date()):<12}{r['side']:<6}"
-              f"{r['entry_price']:>10.2f}{r['sim_outcome']:>14}{r['tick_outcome']:>14}"
-              f"{match_s:>7}{r['pnl_dollars']:>10.2f}{r['real_pnl']:>10.2f}")
+        print(
+            f"{str(r['session_date'].date()):<12}{r['side']:<6}"
+            f"{r['entry_price']:>10.2f}{r['sim_outcome']:>14}{r['tick_outcome']:>14}"
+            f"{match_s:>7}{r['pnl_dollars']:>10.2f}{r['real_pnl']:>10.2f}"
+        )
 
     # Persist for follow-up
     overlap.to_parquet(VERIFICATION_PARQUET, index=False)

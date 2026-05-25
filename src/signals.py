@@ -15,7 +15,6 @@ Run from project root:
 
 import statistics
 import sys
-from typing import Optional
 
 import pandas as pd
 
@@ -27,6 +26,7 @@ MIN_CLUSTER_SIZE = 3
 
 
 # ─── Opening range ────────────────────────────────────────────────────────
+
 
 def compute_opening_range(
     bars: pd.DataFrame,
@@ -69,12 +69,12 @@ def compute_or_close(
     Returns:
         Series of close prices indexed by ``session_date``.
     """
-    or_close_bars = bars.between_time(or_close_time, or_close_time,
-                                       inclusive="both")
+    or_close_bars = bars.between_time(or_close_time, or_close_time, inclusive="both")
     return or_close_bars.groupby("session_date")["close"].last()
 
 
 # ─── Cluster pool ─────────────────────────────────────────────────────────
+
 
 def _cluster_levels(levels, gap=CLUSTER_GAP, min_size=MIN_CLUSTER_SIZE):
     if not levels:
@@ -125,33 +125,44 @@ def build_cluster_pool(
     for i, session in enumerate(sessions):
         if i < lookback:
             continue
-        window = or_levels.iloc[i - lookback:i]
+        window = or_levels.iloc[i - lookback : i]
         levels = window["or_high"].tolist() + window["or_low"].tolist()
         clusters = _cluster_levels(levels, gap=gap, min_size=min_size)
         for j, cluster in enumerate(clusters):
-            rows.append({
-                "session_date": session,
-                "cluster_id": j,
-                "center": sum(cluster) / len(cluster),
-                "median": statistics.median(cluster),
-                "n_levels": len(cluster),
-                "low": min(cluster),
-                "high": max(cluster),
-            })
+            rows.append(
+                {
+                    "session_date": session,
+                    "cluster_id": j,
+                    "center": sum(cluster) / len(cluster),
+                    "median": statistics.median(cluster),
+                    "n_levels": len(cluster),
+                    "low": min(cluster),
+                    "high": max(cluster),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 # ─── Candidates (clusters within today's OR) ──────────────────────────────
 
-CANDIDATE_COLS = ["session_date", "cluster_id", "center", "median", "n_levels",
-                  "low", "high", "or_low", "or_high"]
+CANDIDATE_COLS = [
+    "session_date",
+    "cluster_id",
+    "center",
+    "median",
+    "n_levels",
+    "low",
+    "high",
+    "or_low",
+    "or_high",
+]
 
 
 def build_candidates(
     or_levels: pd.DataFrame,
     cluster_pool: pd.DataFrame,
     gate: str = "inside_OR",
-    or_close: Optional[pd.Series] = None,
+    or_close: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Per-session candidates: clusters that pass the gate.
 
@@ -181,24 +192,19 @@ def build_candidates(
     needs_close = gate in ("within_100", "within_200")
     if needs_close:
         if or_close is None:
-            raise ValueError(f"gate={gate!r} requires or_close (from "
-                             f"compute_or_close)")
-        base = base.merge(or_close.rename("or_close").reset_index(),
-                          on="session_date", how="left")
+            raise ValueError(f"gate={gate!r} requires or_close (from compute_or_close)")
+        base = base.merge(or_close.rename("or_close").reset_index(), on="session_date", how="left")
 
     merged = cluster_pool.merge(base, on="session_date", how="inner")
 
     if gate == "inside_OR":
-        mask = ((merged["center"] >= merged["or_low"])
-                & (merged["center"] <= merged["or_high"]))
+        mask = (merged["center"] >= merged["or_low"]) & (merged["center"] <= merged["or_high"])
     elif gate == "no_gate":
         mask = pd.Series(True, index=merged.index)
     elif gate == "within_100":
-        mask = ((merged["center"] - merged["or_close"]).abs() <= 100.0) \
-               & merged["or_close"].notna()
+        mask = ((merged["center"] - merged["or_close"]).abs() <= 100.0) & merged["or_close"].notna()
     elif gate == "within_200":
-        mask = ((merged["center"] - merged["or_close"]).abs() <= 200.0) \
-               & merged["or_close"].notna()
+        mask = ((merged["center"] - merged["or_close"]).abs() <= 200.0) & merged["or_close"].notna()
     else:
         raise ValueError(f"Unknown gate: {gate!r}")
 
@@ -207,16 +213,17 @@ def build_candidates(
 
 # ─── CLI commands ─────────────────────────────────────────────────────────
 
+
 def or_stats():
     bars = load_processed_bars()
     or_levels = compute_opening_range(bars)
     or_levels["or_range"] = or_levels["or_high"] - or_levels["or_low"]
     print(f"Sessions with RTH data: {len(or_levels):,}")
-    print(f"\nOR range distribution (points):")
+    print("\nOR range distribution (points):")
     print(or_levels["or_range"].describe().to_string())
-    print(f"\n5 narrowest:")
+    print("\n5 narrowest:")
     print(or_levels.nsmallest(5, "or_range").to_string())
-    print(f"\n5 widest:")
+    print("\n5 widest:")
     print(or_levels.nlargest(5, "or_range").to_string())
 
 
@@ -226,9 +233,8 @@ def clusters():
     pool = build_cluster_pool(or_levels)
     n_trading = len(or_levels) - LOOKBACK_SESSIONS
     print(f"Total clusters: {len(pool):,}")
-    print(f"Sessions with clusters: {pool['session_date'].nunique():,} / "
-          f"{n_trading:,}")
-    print(f"\nClusters per session:")
+    print(f"Sessions with clusters: {pool['session_date'].nunique():,} / {n_trading:,}")
+    print("\nClusters per session:")
     print(pool.groupby("session_date").size().describe().to_string())
 
 
@@ -249,26 +255,29 @@ def candidates():
     n_with_cands = cands["session_date"].nunique()
 
     print(f"\nTotal candidates: {len(cands):,}")
-    print(f"Sessions with >=1 candidate: {n_with_cands:,} / {n_trading:,} "
-          f"({n_with_cands / n_trading * 100:.1f}%)")
-    print(f"Sessions with 0 candidates (no trade): "
-          f"{n_trading - n_with_cands:,} ({(n_trading - n_with_cands) / n_trading * 100:.1f}%)")
+    print(
+        f"Sessions with >=1 candidate: {n_with_cands:,} / {n_trading:,} "
+        f"({n_with_cands / n_trading * 100:.1f}%)"
+    )
+    print(
+        f"Sessions with 0 candidates (no trade): "
+        f"{n_trading - n_with_cands:,} ({(n_trading - n_with_cands) / n_trading * 100:.1f}%)"
+    )
 
     per_session = cands.groupby("session_date").size()
-    print(f"\nCandidates-per-session distribution (sessions with any):")
+    print("\nCandidates-per-session distribution (sessions with any):")
     print(per_session.describe().to_string())
 
     # Show a session with multiple candidates as a sample
     if len(per_session) > 0:
         busy = per_session.idxmax()
-        print(f"\nSample: busiest session ({busy}, "
-              f"{per_session.loc[busy]} candidates):")
+        print(f"\nSample: busiest session ({busy}, {per_session.loc[busy]} candidates):")
         print(cands[cands["session_date"] == busy].to_string())
 
     # Yearly breakdown
     cands_with_year = cands.copy()
     cands_with_year["year"] = pd.to_datetime(cands_with_year["session_date"]).dt.year
-    print(f"\nCandidates per year:")
+    print("\nCandidates per year:")
     yearly = cands_with_year.groupby("year").agg(
         candidates=("cluster_id", "count"),
         trading_sessions=("session_date", "nunique"),
@@ -280,6 +289,5 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "or-stats"
     cmd = cmd.replace("-", "_")
     {"or_stats": or_stats, "clusters": clusters, "candidates": candidates}.get(
-        cmd, lambda: print(f"Unknown: {cmd}\n"
-                           f"Usage: or-stats | clusters | candidates")
+        cmd, lambda: print(f"Unknown: {cmd}\nUsage: or-stats | clusters | candidates")
     )()

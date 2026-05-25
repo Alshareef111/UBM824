@@ -8,14 +8,16 @@ Output: results/archive/v2_4040_examples_20260515/
 No modifications to protected files. Pure read-only against trades parquet
 and bars parquet.
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -69,8 +71,10 @@ def select_trades(trades: pd.DataFrame) -> list[dict]:
             p["_category"] = cat
             out.append(p)
         if len(picks) < n:
-            print(f"  warning: only {len(picks)} found for {cat} in 2024-2026; "
-                  f"would substitute but bucket still has slots")
+            print(
+                f"  warning: only {len(picks)} found for {cat} in 2024-2026; "
+                f"would substitute but bucket still has slots"
+            )
 
     # Force-closes: one positive, one negative
     for cat, df, n in [("force-close win", fc_pos, 1), ("force-close loss", fc_neg, 1)]:
@@ -107,8 +111,10 @@ def draw_candles(ax, day_bars: pd.DataFrame):
     width_minutes = 0.6 / (24 * 60)  # 60% of a minute in matplotlib date units
 
     for i, (x, row) in enumerate(zip(xs, day_bars.itertuples())):
-        o = float(row.open); c = float(row.close)
-        h = float(row.high); l = float(row.low)
+        o = float(row.open)
+        c = float(row.close)
+        h = float(row.high)
+        l = float(row.low)
         up = c >= o
         body_color = "#2a9d8f" if up else "#e76f51"
         edge_color = body_color
@@ -117,12 +123,17 @@ def draw_candles(ax, day_bars: pd.DataFrame):
         # Body
         body_low = min(o, c)
         body_height = max(abs(c - o), 1e-9)
-        ax.add_patch(Rectangle(
-            (x - width_minutes / 2, body_low),
-            width_minutes, body_height,
-            facecolor=body_color, edgecolor=edge_color,
-            linewidth=0.4, zorder=3,
-        ))
+        ax.add_patch(
+            Rectangle(
+                (x - width_minutes / 2, body_low),
+                width_minutes,
+                body_height,
+                facecolor=body_color,
+                edgecolor=edge_color,
+                linewidth=0.4,
+                zorder=3,
+            )
+        )
 
 
 def format_text_panel(trade: dict) -> tuple[str, str]:
@@ -187,13 +198,14 @@ def format_text_panel(trade: dict) -> tuple[str, str]:
     return txt, result_block, result_color
 
 
-def draw_one_trade(ax_chart, ax_text, trade: dict, day_bars: pd.DataFrame,
-                   compact: bool = False):
+def draw_one_trade(ax_chart, ax_text, trade: dict, day_bars: pd.DataFrame, compact: bool = False):
     """Draw left=candle, right=text. If compact, reduce font/marker sizes."""
-    from matplotlib.dates import date2num, DateFormatter
+    from matplotlib.dates import DateFormatter, date2num
 
     sd = pd.Timestamp(trade["session_date"]).date()
-    win_start = pd.Timestamp.combine(sd, pd.Timestamp("09:00").time()).tz_localize("America/New_York")
+    win_start = pd.Timestamp.combine(sd, pd.Timestamp("09:00").time()).tz_localize(
+        "America/New_York"
+    )
     win_end = pd.Timestamp.combine(sd, pd.Timestamp("11:45").time()).tz_localize("America/New_York")
 
     mask = (day_bars["ts_ny"] >= win_start) & (day_bars["ts_ny"] <= win_end)
@@ -228,25 +240,55 @@ def draw_one_trade(ax_chart, ax_text, trade: dict, day_bars: pd.DataFrame,
     ax_chart.axhline(stop_price, color="#e63946", linewidth=1.0, linestyle="--", zorder=4)
 
     # 9:45 and 11:30 vertical dotted lines
-    orb_close_t = pd.Timestamp.combine(sd, pd.Timestamp("09:45").time()).tz_localize("America/New_York")
-    force_close_t = pd.Timestamp.combine(sd, pd.Timestamp("11:30").time()).tz_localize("America/New_York")
-    ax_chart.axvline(date2num(orb_close_t.tz_localize(None)), color="gray", linestyle=":", linewidth=0.8, zorder=2)
-    ax_chart.axvline(date2num(force_close_t.tz_localize(None)), color="gray", linestyle=":", linewidth=0.8, zorder=2)
+    orb_close_t = pd.Timestamp.combine(sd, pd.Timestamp("09:45").time()).tz_localize(
+        "America/New_York"
+    )
+    force_close_t = pd.Timestamp.combine(sd, pd.Timestamp("11:30").time()).tz_localize(
+        "America/New_York"
+    )
+    ax_chart.axvline(
+        date2num(orb_close_t.tz_localize(None)),
+        color="gray",
+        linestyle=":",
+        linewidth=0.8,
+        zorder=2,
+    )
+    ax_chart.axvline(
+        date2num(force_close_t.tz_localize(None)),
+        color="gray",
+        linestyle=":",
+        linewidth=0.8,
+        zorder=2,
+    )
 
     # Entry / exit markers
     entry_t = pd.Timestamp(trade["entry_time"]).tz_convert("America/New_York")
     exit_t = pd.Timestamp(trade["exit_time"]).tz_convert("America/New_York")
     marker = "^" if side == "buy" else "v"
     marker_size = 90 if not compact else 50
-    ax_chart.scatter(date2num(entry_t.tz_localize(None)), entry_price,
-                     marker=marker, s=marker_size, color="#1d3557",
-                     edgecolors="white", linewidths=0.8, zorder=6)
+    ax_chart.scatter(
+        date2num(entry_t.tz_localize(None)),
+        entry_price,
+        marker=marker,
+        s=marker_size,
+        color="#1d3557",
+        edgecolors="white",
+        linewidths=0.8,
+        zorder=6,
+    )
 
     pnl_d = float(trade["pnl_dollars"])
     exit_color = "#2a9d8f" if pnl_d > 0 else ("#e76f51" if pnl_d < 0 else "#777777")
-    ax_chart.scatter(date2num(exit_t.tz_localize(None)), float(trade["exit_price"]),
-                     marker="o", s=marker_size, color=exit_color,
-                     edgecolors="white", linewidths=0.8, zorder=6)
+    ax_chart.scatter(
+        date2num(exit_t.tz_localize(None)),
+        float(trade["exit_price"]),
+        marker="o",
+        s=marker_size,
+        color=exit_color,
+        edgecolors="white",
+        linewidths=0.8,
+        zorder=6,
+    )
 
     ax_chart.set_xlim(x_min, x_max)
 
@@ -266,18 +308,34 @@ def draw_one_trade(ax_chart, ax_text, trade: dict, day_bars: pd.DataFrame,
     txt, result_block, result_color = format_text_panel(trade)
     fontsize = 10 if not compact else 7
     ax_text.set_axis_off()
-    main_obj = ax_text.text(0.02, 0.98, txt, family="monospace", fontsize=fontsize,
-                            va="top", ha="left", transform=ax_text.transAxes)
+    main_obj = ax_text.text(
+        0.02,
+        0.98,
+        txt,
+        family="monospace",
+        fontsize=fontsize,
+        va="top",
+        ha="left",
+        transform=ax_text.transAxes,
+    )
     # Use canvas to measure bounding box, then place result text just below
     fig = ax_text.figure
     fig.canvas.draw()
     bbox = main_obj.get_window_extent()
     inv = ax_text.transAxes.inverted()
     y_bottom_axes = inv.transform((bbox.x0, bbox.y0))[1]
-    ax_text.text(0.02, max(0.0, y_bottom_axes - 0.02), result_block.lstrip("\n"),
-                 family="monospace", fontsize=fontsize, va="top", ha="left",
-                 color=result_color, transform=ax_text.transAxes,
-                 fontweight="bold")
+    ax_text.text(
+        0.02,
+        max(0.0, y_bottom_axes - 0.02),
+        result_block.lstrip("\n"),
+        family="monospace",
+        fontsize=fontsize,
+        va="top",
+        ha="left",
+        color=result_color,
+        transform=ax_text.transAxes,
+        fontweight="bold",
+    )
 
 
 def make_individual(trade: dict, idx: int, day_bars: pd.DataFrame) -> Path:
@@ -310,7 +368,7 @@ def make_contact_sheet(selected: list[dict], bars: pd.DataFrame) -> Path:
         ax_chart = fig.add_subplot(inner[0])
         ax_text = fig.add_subplot(inner[1])
 
-        ax_chart.set_title(f"#{i+1} — {trade['_category']}", fontsize=10)
+        ax_chart.set_title(f"#{i + 1} — {trade['_category']}", fontsize=10)
 
         day_bars = session_bars(bars, trade["session_date"])
         draw_one_trade(ax_chart, ax_text, trade, day_bars, compact=True)
@@ -346,7 +404,9 @@ def trade_note(trade: dict, day_bars: pd.DataFrame) -> str:
             return f"slow-grind stop after {minutes:.0f} minutes"
     if reason == "force_close":
         if pnl > 0:
-            return f"held through 11:30 force-close, small winner ({pnl:+.0f}$ over {minutes:.0f} min)"
+            return (
+                f"held through 11:30 force-close, small winner ({pnl:+.0f}$ over {minutes:.0f} min)"
+            )
         elif pnl < 0:
             return f"ranged sideways until force-close, loser ({pnl:+.0f}$ over {minutes:.0f} min)"
         else:
@@ -358,9 +418,13 @@ def write_manifest(selected: list[dict], filenames: list[Path], bars: pd.DataFra
     lines = []
     lines.append("# V2 + 40/40 example trades — manifest")
     lines.append("")
-    lines.append(f"Date generated: 2026-05-15")
-    lines.append(f"Source: `results/archive/strategy_report_20260512/trades_v2_4040.parquet` (908 trades)")
-    lines.append(f"Selection: 2 each of FADE win / TREND win / FADE loss / TREND loss, plus 2 force-close (one +, one −). Preferred 2024-2026.")
+    lines.append("Date generated: 2026-05-15")
+    lines.append(
+        "Source: `results/archive/strategy_report_20260512/trades_v2_4040.parquet` (908 trades)"
+    )
+    lines.append(
+        "Selection: 2 each of FADE win / TREND win / FADE loss / TREND loss, plus 2 force-close (one +, one −). Preferred 2024-2026."
+    )
     lines.append("")
     lines.append("| # | Date | Side | Label | Outcome | P&L | File |")
     lines.append("|---:|---|---|---|---|---:|---|")
@@ -390,12 +454,16 @@ def main():
     selected = select_trades(trades)
 
     print(f"\nSelected {len(selected)} trades:")
-    print(f"  {'#':>2}  {'date':<10}  {'side':<5}  {'lbl':<6}  {'entry':>10}  {'exit':>10}  {'reason':<12}  {'P&L':>8}")
+    print(
+        f"  {'#':>2}  {'date':<10}  {'side':<5}  {'lbl':<6}  {'entry':>10}  {'exit':>10}  {'reason':<12}  {'P&L':>8}"
+    )
     for i, t in enumerate(selected, start=1):
         sd = pd.Timestamp(t["session_date"]).strftime("%Y-%m-%d")
-        print(f"  {i:>2}  {sd:<10}  {t['side']:<5}  {t['cluster_label']:<6}  "
-              f"{float(t['entry_price']):>10.2f}  {float(t['exit_price']):>10.2f}  "
-              f"{t['exit_reason']:<12}  {float(t['pnl_dollars']):>+8.0f}  [{t['_category']}]")
+        print(
+            f"  {i:>2}  {sd:<10}  {t['side']:<5}  {t['cluster_label']:<6}  "
+            f"{float(t['entry_price']):>10.2f}  {float(t['exit_price']):>10.2f}  "
+            f"{t['exit_reason']:<12}  {float(t['pnl_dollars']):>+8.0f}  [{t['_category']}]"
+        )
 
     filenames = []
     for i, trade in enumerate(selected, start=1):
@@ -409,7 +477,7 @@ def main():
     print(f"  wrote {cs.name}")
 
     write_manifest(selected, filenames, bars)
-    print(f"  wrote manifest.md")
+    print("  wrote manifest.md")
 
     print("\n--- manifest.md ---")
     print((OUT_DIR / "manifest.md").read_text())

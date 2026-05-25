@@ -29,6 +29,7 @@ OUTRIGHT_PATTERN = re.compile(r"^MNQ[HMUZ]\d+$")
 
 # ─── Loading ──────────────────────────────────────────────────────────────
 
+
 def list_raw_csvs() -> list[Path]:
     """List the Databento 1-min OHLCV CSVs in ``data/raw/``, sorted.
 
@@ -64,8 +65,7 @@ def load_raw_bars(verbose: bool = True) -> pd.DataFrame:
         before = len(df)
         df = df[df["symbol"].astype(str).str.match(OUTRIGHT_PATTERN)].copy()
         if verbose:
-            print(f"  {before:,} rows -> {len(df):,} outright "
-                  f"({before - len(df):,} dropped)")
+            print(f"  {before:,} rows -> {len(df):,} outright ({before - len(df):,} dropped)")
         frames.append(df)
 
     bars = pd.concat(frames, ignore_index=True)
@@ -81,6 +81,7 @@ def load_raw_bars(verbose: bool = True) -> pd.DataFrame:
 
 
 # ─── Roll detection ───────────────────────────────────────────────────────
+
 
 def build_front_map(bars: pd.DataFrame) -> pd.Series:
     """Map every NY session_date to its front-month contract by volume.
@@ -115,11 +116,13 @@ def compute_rolls_from_volume(bars: pd.DataFrame) -> pd.DataFrame:
     front_map = build_front_map(bars)
     s = front_map.sort_index()
     prev = s.shift(1)
-    rolls = pd.DataFrame({
-        "roll_date": s.index,
-        "old_front": prev.values,
-        "new_front": s.values,
-    })
+    rolls = pd.DataFrame(
+        {
+            "roll_date": s.index,
+            "old_front": prev.values,
+            "new_front": s.values,
+        }
+    )
     rolls = rolls[
         (rolls["old_front"] != rolls["new_front"]) & rolls["old_front"].notna()
     ].reset_index(drop=True)
@@ -139,6 +142,7 @@ def load_existing_rolls() -> pd.DataFrame:
 
 
 # ─── Continuous series ────────────────────────────────────────────────────
+
 
 def build_continuous_unadjusted(
     bars: pd.DataFrame,
@@ -165,8 +169,7 @@ def build_continuous_unadjusted(
     df["ts_utc"] = df["ts_event"]
     df["ts_ny"] = df["ts_event"].dt.tz_convert("America/New_York")
     df = df.rename(columns={"symbol": "contract"})
-    cols = ["ts_utc", "ts_ny", "session_date", "contract",
-            "open", "high", "low", "close", "volume"]
+    cols = ["ts_utc", "ts_ny", "session_date", "contract", "open", "high", "low", "close", "volume"]
     return df[cols].sort_values("ts_utc").reset_index(drop=True)
 
 
@@ -181,7 +184,7 @@ def save_processed(df: pd.DataFrame, path: Path = PROCESSED_PARQUET) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, engine="pyarrow", compression="snappy")
-    size_mb = path.stat().st_size / (1024 ** 2)
+    size_mb = path.stat().st_size / (1024**2)
     print(f"\nSaved {len(df):,} rows to {path}")
     print(f"File size: {size_mb:.1f} MB")
 
@@ -206,6 +209,7 @@ def load_processed_bars(path: Path = PROCESSED_PARQUET) -> pd.DataFrame:
 
 
 # ─── CLI commands ─────────────────────────────────────────────────────────
+
 
 def compare_rolls():
     print("=" * 72)
@@ -260,14 +264,14 @@ def info():
     print(f"File: {PROCESSED_PARQUET}")
     print(f"Rows: {len(df):,}")
     print(f"Columns: {list(df.columns)}")
-    print(f"\nDate range:")
+    print("\nDate range:")
     print(f"  UTC: {df['ts_utc'].min()} -> {df['ts_utc'].max()}")
     print(f"  NY:  {df['ts_ny'].min()} -> {df['ts_ny'].max()}")
     print(f"Sessions: {df['session_date'].nunique():,}")
     print(f"Contracts: {sorted(df['contract'].unique())}")
-    print(f"\nSample (first 3):")
+    print("\nSample (first 3):")
     print(df.head(3).to_string())
-    print(f"\nSample (last 3):")
+    print("\nSample (last 3):")
     print(df.tail(3).to_string())
 
 

@@ -1,0 +1,6 @@
+# Dev-only tooling. Install with:
+#   .venv/bin/pip install -r requirements-dev.txt
+#
+# Runtime deps live in requirements.txt; do NOT mirror them here.
+ruff>=0.6.0
+mypy>=1.10.0

@@ -34,6 +34,7 @@ Output (one new dir per run):
     - summary.json
     - report.md
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -55,7 +56,9 @@ OUTPUT_BASE = REPO_ROOT / "results/tick_verification"
 
 # Preferred tick cache: Databento Jan-May 2026 (Tight window).
 # Fallback: NinjaTrader overlap cache (Mar 17 - Apr 15 2026).
-TICKS_DATABENTO_PARQUET = REPO_ROOT / "data/processed/ticks_databento_2026-01-01_to_2026-05-01.parquet"
+TICKS_DATABENTO_PARQUET = (
+    REPO_ROOT / "data/processed/ticks_databento_2026-01-01_to_2026-05-01.parquet"
+)
 TICKS_OVERLAP_PARQUET = REPO_ROOT / "data/processed/ticks_overlap.parquet"
 
 EXPECTED_TRADES_SHA = "1ccf859e3a580d78eb85cbc37a2cfa7159c3af59c3eb4bb58b5443d0aaf54feb"
@@ -91,9 +94,7 @@ def verify_inputs() -> tuple[str, str]:
     sample_sha = sha256(SAMPLE_CSV)
     if trades_sha != EXPECTED_TRADES_SHA:
         sys.exit(
-            f"FAIL: trades sha256 mismatch\n"
-            f"  got:    {trades_sha}\n"
-            f"  expect: {EXPECTED_TRADES_SHA}"
+            f"FAIL: trades sha256 mismatch\n  got:    {trades_sha}\n  expect: {EXPECTED_TRADES_SHA}"
         )
     if sample_sha != EXPECTED_SAMPLE_SHA:
         sys.exit(
@@ -125,8 +126,10 @@ def resolve_ticks_path() -> Path:
 
 # ---------------- Per-trade replay (identical algorithm to tick_replay_v2.py) ----------------
 
-def replay_trade(trade: dict, ticks_df: pd.DataFrame,
-                 tick_min: pd.Timestamp, tick_max: pd.Timestamp) -> dict:
+
+def replay_trade(
+    trade: dict, ticks_df: pd.DataFrame, tick_min: pd.Timestamp, tick_max: pd.Timestamp
+) -> dict:
     side = trade["side"]
     entry_price = float(trade["entry_price"])
     entry_time = trade["entry_time"]
@@ -142,20 +145,24 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
         return {
             "tick_outcome": "OUT_OF_COVERAGE",
             "trigger_above": None,
-            "fill_ts": pd.NaT, "fill_price": np.nan,
-            "tick_exit_ts": pd.NaT, "tick_exit_price": np.nan,
+            "fill_ts": pd.NaT,
+            "fill_price": np.nan,
+            "tick_exit_ts": pd.NaT,
+            "tick_exit_price": np.nan,
             "tick_pnl_dollars": np.nan,
-            "stop_price": stop_price, "target_price": target_price,
-            "bug_b_pre_fill_stop": False, "bug_b_pre_fill_target": False,
-            "bug_b_exit_bar_gap_stop": False, "bug_b_exit_bar_gap_target": False,
-            "phantom_suspect": False, "out_of_coverage": True,
+            "stop_price": stop_price,
+            "target_price": target_price,
+            "bug_b_pre_fill_stop": False,
+            "bug_b_pre_fill_target": False,
+            "bug_b_exit_bar_gap_stop": False,
+            "bug_b_exit_bar_gap_target": False,
+            "phantom_suspect": False,
+            "out_of_coverage": True,
             "mechanism": MECH_OUT_OF_COVERAGE,
         }
 
     entry_window_end = entry_time + pd.Timedelta(seconds=ENTRY_MINUTE_SEC)
-    em = ticks_df[
-        (ticks_df["ts_utc"] >= entry_time) & (ticks_df["ts_utc"] < entry_window_end)
-    ]
+    em = ticks_df[(ticks_df["ts_utc"] >= entry_time) & (ticks_df["ts_utc"] < entry_window_end)]
     last_arr = em["last"].to_numpy()
     ts_arr = em["ts_utc"].to_numpy()
 
@@ -171,7 +178,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     cluster_low = float(trade["cluster_low"])
     cluster_high = float(trade["cluster_high"])
     if entry_price == cluster_low:
-        trigger_above = True   # original cluster above market; fill on price rising
+        trigger_above = True  # original cluster above market; fill on price rising
     elif entry_price == cluster_high:
         trigger_above = False  # original cluster below market; fill on price falling
     else:
@@ -186,13 +193,19 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
         return {
             "tick_outcome": "NO_FILL",
             "trigger_above": trigger_above,
-            "fill_ts": pd.NaT, "fill_price": np.nan,
-            "tick_exit_ts": pd.NaT, "tick_exit_price": np.nan,
+            "fill_ts": pd.NaT,
+            "fill_price": np.nan,
+            "tick_exit_ts": pd.NaT,
+            "tick_exit_price": np.nan,
             "tick_pnl_dollars": 0.0,
-            "stop_price": stop_price, "target_price": target_price,
-            "bug_b_pre_fill_stop": False, "bug_b_pre_fill_target": False,
-            "bug_b_exit_bar_gap_stop": False, "bug_b_exit_bar_gap_target": False,
-            "phantom_suspect": True, "out_of_coverage": False,
+            "stop_price": stop_price,
+            "target_price": target_price,
+            "bug_b_pre_fill_stop": False,
+            "bug_b_pre_fill_target": False,
+            "bug_b_exit_bar_gap_stop": False,
+            "bug_b_exit_bar_gap_target": False,
+            "phantom_suspect": True,
+            "out_of_coverage": False,
             "mechanism": MECH_PHANTOM_ENTRY,
         }
 
@@ -217,9 +230,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     )
     fc_utc = fc_ny.tz_convert("UTC")
 
-    after = ticks_df[
-        (ticks_df["ts_utc"] > fill_ts) & (ticks_df["ts_utc"] < fc_utc)
-    ]
+    after = ticks_df[(ticks_df["ts_utc"] > fill_ts) & (ticks_df["ts_utc"] < fc_utc)]
     a_last = after["last"].to_numpy()
     a_ts = after["ts_utc"].to_numpy()
 
@@ -275,9 +286,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     if sim_exit_ts > sim_entry_ts:
         bar_start = sim_exit_ts.floor("min")
         bar_end = bar_start + pd.Timedelta(seconds=60)
-        bar_ticks = ticks_df[
-            (ticks_df["ts_utc"] >= bar_start) & (ticks_df["ts_utc"] < bar_end)
-        ]
+        bar_ticks = ticks_df[(ticks_df["ts_utc"] >= bar_start) & (ticks_df["ts_utc"] < bar_end)]
         if len(bar_ticks) > 0:
             first_tick_price = float(bar_ticks.iloc[0]["last"])
             if side == "buy":
@@ -290,14 +299,19 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     return {
         "tick_outcome": outcome,
         "trigger_above": trigger_above,
-        "fill_ts": fill_ts, "fill_price": fill_price,
-        "tick_exit_ts": exit_ts, "tick_exit_price": exit_price,
+        "fill_ts": fill_ts,
+        "fill_price": fill_price,
+        "tick_exit_ts": exit_ts,
+        "tick_exit_price": exit_price,
         "tick_pnl_dollars": float(pnl_pts * POINT_VALUE_USD),
-        "stop_price": stop_price, "target_price": target_price,
-        "bug_b_pre_fill_stop": bug_b_stop, "bug_b_pre_fill_target": bug_b_target,
+        "stop_price": stop_price,
+        "target_price": target_price,
+        "bug_b_pre_fill_stop": bug_b_stop,
+        "bug_b_pre_fill_target": bug_b_target,
         "bug_b_exit_bar_gap_stop": bug_b_exit_gap_stop,
         "bug_b_exit_bar_gap_target": bug_b_exit_gap_target,
-        "phantom_suspect": False, "out_of_coverage": False,
+        "phantom_suspect": False,
+        "out_of_coverage": False,
         "mechanism": None,
     }
 
@@ -340,8 +354,10 @@ def attribute_mechanism(trade: dict, replay: dict) -> str:
 
 # ---------------- Report rendering ----------------
 
-def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
-                 tmin: pd.Timestamp, tmax: pd.Timestamp) -> str:
+
+def build_report(
+    summary: dict, recon: pd.DataFrame, sample_dates: set, tmin: pd.Timestamp, tmax: pd.Timestamp
+) -> str:
     lines: list[str] = []
     lines.append(f"# V2 + 40/40 tick replayer (Window variant) — run {summary['run_timestamp']}")
     lines.append("")
@@ -356,11 +372,12 @@ def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
     lines.append("## Inputs")
     lines.append("")
     lines.append(f"- Trades parquet sha256: `{summary['trades_sha256']}`")
-    lines.append(f"- Phase 1 sample CSV sha256: `{summary['sample_sha256']}`  (cross-reference only)")
+    lines.append(
+        f"- Phase 1 sample CSV sha256: `{summary['sample_sha256']}`  (cross-reference only)"
+    )
     lines.append(f"- Tick parquet: `{summary['ticks_path']}`")
     lines.append(
-        f"- Tick coverage: {tmin} → {tmax}  "
-        f"({summary['tick_coverage']['n_ticks']:,} ticks)"
+        f"- Tick coverage: {tmin} → {tmax}  ({summary['tick_coverage']['n_ticks']:,} ticks)"
     )
     lines.append(
         f"- Bracket: {summary['bracket']['stop_points']:.0f} / "
@@ -399,7 +416,9 @@ def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
     lines.append("")
     lines.append("| Metric | Value |")
     lines.append("|---|---:|")
-    lines.append(f"| Phase 1 dates in window | {pp['p1_dates_in_window']} / {pp['p1_dates_total']} |")
+    lines.append(
+        f"| Phase 1 dates in window | {pp['p1_dates_in_window']} / {pp['p1_dates_total']} |"
+    )
     lines.append(f"| Verified trades on Phase 1 dates | {pp['verified_on_p1']} |")
     lines.append(f"| Verified stops on Phase 1 dates | {pp['verified_stops_on_p1']} |")
     lines.append("")
@@ -466,6 +485,7 @@ def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
 
 # ---------------- Main ----------------
 
+
 def main() -> None:
     print("=" * 76)
     print("V2 + 40/40 tick replayer — Window variant")
@@ -491,8 +511,10 @@ def main() -> None:
     sample = pd.read_csv(SAMPLE_CSV)
     sample_dates = set(pd.to_datetime(sample["date"]).dt.date)
 
-    print(f"Loaded:        {len(trades)} trades, {len(ticks):,} ticks, "
-          f"{len(sample_dates)} P1 sample dates")
+    print(
+        f"Loaded:        {len(trades)} trades, {len(ticks):,} ticks, "
+        f"{len(sample_dates)} P1 sample dates"
+    )
     print(f"Tick coverage: {tick_min}  ->  {tick_max}")
 
     # Filter: in coverage only (no Phase 1 filter — that's the whole point of this fork)
@@ -506,10 +528,14 @@ def main() -> None:
     oof = trades[~in_coverage].reset_index(drop=True)
     oof["on_phase1_date"] = oof["session_date"].dt.date.isin(sample_dates)
 
-    print(f"In tick coverage:     {len(target)} trades  "
-          f"(of which {int(target['on_phase1_date'].sum())} on Phase 1 dates)")
-    print(f"Out of tick coverage: {len(oof)} trades  "
-          f"(of which {int(oof['on_phase1_date'].sum())} on Phase 1 dates)")
+    print(
+        f"In tick coverage:     {len(target)} trades  "
+        f"(of which {int(target['on_phase1_date'].sum())} on Phase 1 dates)"
+    )
+    print(
+        f"Out of tick coverage: {len(oof)} trades  "
+        f"(of which {int(oof['on_phase1_date'].sum())} on Phase 1 dates)"
+    )
 
     if len(target) == 0:
         sys.exit("No trades in tick coverage; aborting.")
@@ -556,14 +582,19 @@ def main() -> None:
             "trend": int((stops_v["cluster_label"] == "TREND").sum()),
         }
     else:
-        stop_summary = {"n": 0, "n_in_bug_b_band": 0, "bug_b_same_bar": 0,
-                        "bug_b_next_bar": 0, "flagged_pre_fill_stop": 0,
-                        "fade": 0, "trend": 0}
+        stop_summary = {
+            "n": 0,
+            "n_in_bug_b_band": 0,
+            "bug_b_same_bar": 0,
+            "bug_b_next_bar": 0,
+            "flagged_pre_fill_stop": 0,
+            "fade": 0,
+            "trend": 0,
+        }
 
     # Phase 1 cross-reference (counts, not a filter)
     p1_dates_in_window = sum(
-        1 for d in sample_dates
-        if tick_min <= pd.Timestamp(d).tz_localize("UTC") <= tick_max
+        1 for d in sample_dates if tick_min <= pd.Timestamp(d).tz_localize("UTC") <= tick_max
     )
     phase1_overlap = {
         "p1_dates_total": len(sample_dates),
@@ -593,7 +624,9 @@ def main() -> None:
         "sample_sha256": sample_sha,
         "ticks_path": str(ticks_path.relative_to(REPO_ROOT)),
         "tick_coverage": {
-            "start": str(tick_min), "end": str(tick_max), "n_ticks": int(len(ticks)),
+            "start": str(tick_min),
+            "end": str(tick_max),
+            "n_ticks": int(len(ticks)),
         },
         "counts": counts,
         "stop_outs": stop_summary,
@@ -617,8 +650,8 @@ def main() -> None:
     print()
     print(f"Output dir: {out_dir}")
     print(f"  reconciliation.parquet  ({len(recon)} rows)")
-    print(f"  summary.json")
-    print(f"  report.md")
+    print("  summary.json")
+    print("  report.md")
     print()
     print(json.dumps(summary, indent=2, default=str))
 

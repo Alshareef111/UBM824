@@ -8,19 +8,17 @@ Usage:
 Or import plot_session(date_str) directly.
 """
 
+import sys
 from collections import deque
 from pathlib import Path
-import sys
 
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from clusters import find_clusters
-
-from paths import BARS_PARQUET, ORB_TABLE_PARQUET, TRADES_PARQUET, CHARTS_DIR, ensure_dirs
+from paths import BARS_PARQUET, CHARTS_DIR, ORB_TABLE_PARQUET, TRADES_PARQUET, ensure_dirs
 
 LOOKBACK = 200
 CLUSTER_GAP = 3.0
@@ -28,9 +26,9 @@ MIN_CLUSTER_SIZE = 3
 STOP_POINTS = 30.0
 TARGET_POINTS = 30.0
 
-ORB_HM = (9, 30, 9, 45)            # ORB window 9:30-9:45 NY
-TRADE_WIN_HM = (9, 46, 11, 30)     # Trading window 9:46-11:30 NY
-PLOT_WIN_HM = (9, 0, 12, 0)        # Chart context 9:00-12:00 NY
+ORB_HM = (9, 30, 9, 45)  # ORB window 9:30-9:45 NY
+TRADE_WIN_HM = (9, 46, 11, 30)  # Trading window 9:46-11:30 NY
+PLOT_WIN_HM = (9, 0, 12, 0)  # Chart context 9:00-12:00 NY
 
 
 def _build_clusters_for_day(orb_table: pd.DataFrame, session_date) -> tuple:
@@ -50,8 +48,10 @@ def _build_clusters_for_day(orb_table: pd.DataFrame, session_date) -> tuple:
 
     levels = []
     for h, l in level_pool:
-        levels.append(h); levels.append(l)
-    levels.append(today_row.orb_high); levels.append(today_row.orb_low)
+        levels.append(h)
+        levels.append(l)
+    levels.append(today_row.orb_high)
+    levels.append(today_row.orb_low)
     clusters = find_clusters(levels, max_gap=CLUSTER_GAP, min_size=MIN_CLUSTER_SIZE)
 
     ref = float(today_row.orb_close)
@@ -80,15 +80,23 @@ def _draw_candles(ax, day_bars: pd.DataFrame) -> None:
     for i in range(len(day_bars)):
         b = day_bars.iloc[i]
         t = times_num[i]
-        op = float(b["open"]); cl = float(b["close"])
-        hi = float(b["high"]); lo = float(b["low"])
+        op = float(b["open"])
+        cl = float(b["close"])
+        hi = float(b["high"])
+        lo = float(b["low"])
         col = up_color if cl >= op else dn_color
         ax.plot([t, t], [lo, hi], color=col, linewidth=0.6, alpha=0.7, solid_capstyle="butt")
-        body_lo = min(op, cl); body_hi = max(op, cl)
+        body_lo = min(op, cl)
+        body_hi = max(op, cl)
         height = max(body_hi - body_lo, 0.05)
         rect = mpatches.Rectangle(
-            (t - bar_w / 2, body_lo), bar_w, height,
-            facecolor=col, edgecolor=col, linewidth=0.4, zorder=2,
+            (t - bar_w / 2, body_lo),
+            bar_w,
+            height,
+            facecolor=col,
+            edgecolor=col,
+            linewidth=0.4,
+            zorder=2,
         )
         ax.add_patch(rect)
 
@@ -111,11 +119,15 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
 
     plot_start = _ny_time(session_date, PLOT_WIN_HM[0], PLOT_WIN_HM[1])
     plot_end = _ny_time(session_date, PLOT_WIN_HM[2], PLOT_WIN_HM[3])
-    day_bars = bars[
-        (bars["session_date"] == session_date)
-        & (bars["ts_ny"] >= plot_start)
-        & (bars["ts_ny"] < plot_end)
-    ].sort_values("ts_ny").reset_index(drop=True)
+    day_bars = (
+        bars[
+            (bars["session_date"] == session_date)
+            & (bars["ts_ny"] >= plot_start)
+            & (bars["ts_ny"] < plot_end)
+        ]
+        .sort_values("ts_ny")
+        .reset_index(drop=True)
+    )
     if day_bars.empty:
         print(f"  No bars for {session_date} — skipping")
         return None
@@ -139,28 +151,57 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
     orb_end = _ny_time(session_date, ORB_HM[2], ORB_HM[3])
     win_start = _ny_time(session_date, TRADE_WIN_HM[0], TRADE_WIN_HM[1])
     win_end = _ny_time(session_date, TRADE_WIN_HM[2], TRADE_WIN_HM[3])
-    ax.axvspan(mdates.date2num(orb_start.tz_localize(None)),
-               mdates.date2num(orb_end.tz_localize(None)),
-               color="#fff176", alpha=0.30, zorder=0)
-    ax.axvspan(mdates.date2num(win_start.tz_localize(None)),
-               mdates.date2num(win_end.tz_localize(None)),
-               color="#bdbdbd", alpha=0.10, zorder=0)
+    ax.axvspan(
+        mdates.date2num(orb_start.tz_localize(None)),
+        mdates.date2num(orb_end.tz_localize(None)),
+        color="#fff176",
+        alpha=0.30,
+        zorder=0,
+    )
+    ax.axvspan(
+        mdates.date2num(win_start.tz_localize(None)),
+        mdates.date2num(win_end.tz_localize(None)),
+        color="#bdbdbd",
+        alpha=0.10,
+        zorder=0,
+    )
 
     orb_high = float(today_row.orb_high)
     orb_low = float(today_row.orb_low)
-    ax.axhline(orb_high, color="#1565c0", linestyle="--", linewidth=1.4, alpha=0.85,
-               zorder=3, label=f"ORB high {orb_high:.2f}")
-    ax.axhline(orb_low, color="#1565c0", linestyle="--", linewidth=1.4, alpha=0.85,
-               zorder=3, label=f"ORB low  {orb_low:.2f}")
-    ax.axhline(ref_close, color="#6a1b9a", linestyle=":", linewidth=1.0, alpha=0.85,
-               zorder=3, label=f"ORB close (ref) {ref_close:.2f}")
+    ax.axhline(
+        orb_high,
+        color="#1565c0",
+        linestyle="--",
+        linewidth=1.4,
+        alpha=0.85,
+        zorder=3,
+        label=f"ORB high {orb_high:.2f}",
+    )
+    ax.axhline(
+        orb_low,
+        color="#1565c0",
+        linestyle="--",
+        linewidth=1.4,
+        alpha=0.85,
+        zorder=3,
+        label=f"ORB low  {orb_low:.2f}",
+    )
+    ax.axhline(
+        ref_close,
+        color="#6a1b9a",
+        linestyle=":",
+        linewidth=1.0,
+        alpha=0.85,
+        zorder=3,
+        label=f"ORB close (ref) {ref_close:.2f}",
+    )
 
     plot_pad = (pmax - pmin) * 0.05 if pmax > pmin else 5.0
     visible_pmin = pmin - plot_pad
     visible_pmax = pmax + plot_pad
 
     side_styles = {
-        "buy":  {"line": "#2e7d32", "face": (0.27, 0.63, 0.28, 0.18)},
+        "buy": {"line": "#2e7d32", "face": (0.27, 0.63, 0.28, 0.18)},
         "sell": {"line": "#c62828", "face": (0.78, 0.16, 0.16, 0.18)},
         "skip": {"line": "#616161", "face": (0.62, 0.62, 0.62, 0.15)},
     }
@@ -180,9 +221,13 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
         mid = (c.low + c.high) / 2
         ax.annotate(
             f"{side.upper()} cluster\n{c.low:.2f}–{c.high:.2f}\nsize={c.size}",
-            xy=(annot_x, mid), xycoords="data",
-            xytext=(6, 0), textcoords="offset points",
-            fontsize=7, ha="left", va="center",
+            xy=(annot_x, mid),
+            xycoords="data",
+            xytext=(6, 0),
+            textcoords="offset points",
+            fontsize=7,
+            ha="left",
+            va="center",
             color=st["line"],
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=st["line"], alpha=0.85),
             zorder=6,
@@ -199,39 +244,85 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
             xp = float(t["exit_price"])
 
             if side == "buy":
-                stop = ep - STOP_POINTS; target = ep + TARGET_POINTS
-                arrow_marker = "^"; arrow_color = "#1b5e20"
+                stop = ep - STOP_POINTS
+                target = ep + TARGET_POINTS
+                arrow_marker = "^"
+                arrow_color = "#1b5e20"
                 lbl_dy = 30
             else:
-                stop = ep + STOP_POINTS; target = ep - TARGET_POINTS
-                arrow_marker = "v"; arrow_color = "#b71c1c"
+                stop = ep + STOP_POINTS
+                target = ep - TARGET_POINTS
+                arrow_marker = "v"
+                arrow_color = "#b71c1c"
                 lbl_dy = -45
 
-            ax.scatter([et_n], [ep], marker=arrow_marker, s=220,
-                       color=arrow_color, edgecolor="black", linewidth=1.0, zorder=7)
+            ax.scatter(
+                [et_n],
+                [ep],
+                marker=arrow_marker,
+                s=220,
+                color=arrow_color,
+                edgecolor="black",
+                linewidth=1.0,
+                zorder=7,
+            )
 
             er = t["exit_reason"]
-            exit_color = {"target": "#2e7d32", "stop": "#c62828",
-                          "force_close": "#f9a825"}.get(er, "#424242")
-            ax.scatter([xt_n], [xp], marker="X", s=200,
-                       color=exit_color, edgecolor="black", linewidth=1.0, zorder=7)
+            exit_color = {"target": "#2e7d32", "stop": "#c62828", "force_close": "#f9a825"}.get(
+                er, "#424242"
+            )
+            ax.scatter(
+                [xt_n],
+                [xp],
+                marker="X",
+                s=200,
+                color=exit_color,
+                edgecolor="black",
+                linewidth=1.0,
+                zorder=7,
+            )
 
-            ax.plot([et_n, xt_n], [stop, stop], color="#c62828", linewidth=1.4,
-                    linestyle="-", alpha=0.7, zorder=4)
-            ax.plot([et_n, xt_n], [target, target], color="#2e7d32", linewidth=1.4,
-                    linestyle="-", alpha=0.7, zorder=4)
-            ax.plot([et_n, xt_n], [ep, xp], color="black", linewidth=0.7,
-                    linestyle=":", alpha=0.5, zorder=4)
+            ax.plot(
+                [et_n, xt_n],
+                [stop, stop],
+                color="#c62828",
+                linewidth=1.4,
+                linestyle="-",
+                alpha=0.7,
+                zorder=4,
+            )
+            ax.plot(
+                [et_n, xt_n],
+                [target, target],
+                color="#2e7d32",
+                linewidth=1.4,
+                linestyle="-",
+                alpha=0.7,
+                zorder=4,
+            )
+            ax.plot(
+                [et_n, xt_n],
+                [ep, xp],
+                color="black",
+                linewidth=0.7,
+                linestyle=":",
+                alpha=0.5,
+                zorder=4,
+            )
 
-            label = (f"{side.upper()} @ {ep:.2f}\n"
-                     f"S {stop:.2f}  T {target:.2f}\n"
-                     f"{er}: {t['pnl_points']:+.1f}pt (${t['pnl_dollars']:+.0f})")
+            label = (
+                f"{side.upper()} @ {ep:.2f}\n"
+                f"S {stop:.2f}  T {target:.2f}\n"
+                f"{er}: {t['pnl_points']:+.1f}pt (${t['pnl_dollars']:+.0f})"
+            )
             ax.annotate(
-                label, xy=(et_n, ep),
-                xytext=(0, lbl_dy), textcoords="offset points",
-                fontsize=7, ha="center",
-                bbox=dict(boxstyle="round,pad=0.3", fc="white",
-                          ec=arrow_color, alpha=0.92),
+                label,
+                xy=(et_n, ep),
+                xytext=(0, lbl_dy),
+                textcoords="offset points",
+                fontsize=7,
+                ha="center",
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=arrow_color, alpha=0.92),
                 zorder=8,
             )
 
@@ -250,9 +341,11 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
     if n_trades:
         pnl_pts = float(day_trades["pnl_points"].sum())
         pnl_usd = float(day_trades["pnl_dollars"].sum())
-        title = (f"{session_date}  |  {n_trades} trade(s)  |  "
-                 f"{pnl_pts:+.2f} pts  (${pnl_usd:+,.2f})  |  "
-                 f"contract: {day_bars['contract'].iloc[0]}")
+        title = (
+            f"{session_date}  |  {n_trades} trade(s)  |  "
+            f"{pnl_pts:+.2f} pts  (${pnl_usd:+,.2f})  |  "
+            f"contract: {day_bars['contract'].iloc[0]}"
+        )
     else:
         title = f"{session_date}  |  no trades  |  contract: {day_bars['contract'].iloc[0]}"
     ax.set_title(title, fontsize=13, fontweight="bold")
@@ -267,12 +360,39 @@ def plot_session(session_date_input, save_dir: Path | None = None) -> Path | Non
         mpatches.Patch(color=side_styles["skip"]["line"], alpha=0.4, label="Skipped (spans ref)"),
         plt.Line2D([0], [0], color="#2e7d32", linewidth=1.4, label="Target line"),
         plt.Line2D([0], [0], color="#c62828", linewidth=1.4, label="Stop line"),
-        plt.Line2D([0], [0], marker="^", color="w", markerfacecolor="#1b5e20",
-                   markeredgecolor="black", label="Buy entry", linestyle="None", markersize=10),
-        plt.Line2D([0], [0], marker="v", color="w", markerfacecolor="#b71c1c",
-                   markeredgecolor="black", label="Sell entry", linestyle="None", markersize=10),
-        plt.Line2D([0], [0], marker="X", color="w", markerfacecolor="#424242",
-                   markeredgecolor="black", label="Exit", linestyle="None", markersize=10),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="^",
+            color="w",
+            markerfacecolor="#1b5e20",
+            markeredgecolor="black",
+            label="Buy entry",
+            linestyle="None",
+            markersize=10,
+        ),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="v",
+            color="w",
+            markerfacecolor="#b71c1c",
+            markeredgecolor="black",
+            label="Sell entry",
+            linestyle="None",
+            markersize=10,
+        ),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="X",
+            color="w",
+            markerfacecolor="#424242",
+            markeredgecolor="black",
+            label="Exit",
+            linestyle="None",
+            markersize=10,
+        ),
     ]
     ax.legend(handles=legend_handles, loc="upper left", fontsize=8, framealpha=0.92, ncol=2)
 
@@ -302,11 +422,15 @@ def plot_session_clean(session_date_input, save_path: Path | None = None) -> Pat
 
     plot_start = _ny_time(session_date, PLOT_WIN_HM[0], PLOT_WIN_HM[1])
     plot_end = _ny_time(session_date, PLOT_WIN_HM[2], PLOT_WIN_HM[3])
-    day_bars = bars[
-        (bars["session_date"] == session_date)
-        & (bars["ts_ny"] >= plot_start)
-        & (bars["ts_ny"] < plot_end)
-    ].sort_values("ts_ny").reset_index(drop=True)
+    day_bars = (
+        bars[
+            (bars["session_date"] == session_date)
+            & (bars["ts_ny"] >= plot_start)
+            & (bars["ts_ny"] < plot_end)
+        ]
+        .sort_values("ts_ny")
+        .reset_index(drop=True)
+    )
     if day_bars.empty:
         print(f"  No bars for {session_date} — skipping")
         return None
@@ -328,12 +452,20 @@ def plot_session_clean(session_date_input, save_path: Path | None = None) -> Pat
     orb_end = _ny_time(session_date, ORB_HM[2], ORB_HM[3])
     win_start = _ny_time(session_date, TRADE_WIN_HM[0], TRADE_WIN_HM[1])
     win_end = _ny_time(session_date, TRADE_WIN_HM[2], TRADE_WIN_HM[3])
-    ax.axvspan(mdates.date2num(orb_start.tz_localize(None)),
-               mdates.date2num(orb_end.tz_localize(None)),
-               color="#fff176", alpha=0.30, zorder=0)
-    ax.axvspan(mdates.date2num(win_start.tz_localize(None)),
-               mdates.date2num(win_end.tz_localize(None)),
-               color="#bdbdbd", alpha=0.10, zorder=0)
+    ax.axvspan(
+        mdates.date2num(orb_start.tz_localize(None)),
+        mdates.date2num(orb_end.tz_localize(None)),
+        color="#fff176",
+        alpha=0.30,
+        zorder=0,
+    )
+    ax.axvspan(
+        mdates.date2num(win_start.tz_localize(None)),
+        mdates.date2num(win_end.tz_localize(None)),
+        color="#bdbdbd",
+        alpha=0.10,
+        zorder=0,
+    )
 
     orb_high = float(today_row.orb_high)
     orb_low = float(today_row.orb_low)
@@ -346,7 +478,7 @@ def plot_session_clean(session_date_input, save_path: Path | None = None) -> Pat
     visible_pmax = pmax + plot_pad
 
     side_styles = {
-        "buy":  {"line": "#2e7d32", "face": (0.27, 0.63, 0.28, 0.18)},
+        "buy": {"line": "#2e7d32", "face": (0.27, 0.63, 0.28, 0.18)},
         "sell": {"line": "#c62828", "face": (0.78, 0.16, 0.16, 0.18)},
         "skip": {"line": "#616161", "face": (0.62, 0.62, 0.62, 0.15)},
     }
@@ -360,9 +492,13 @@ def plot_session_clean(session_date_input, save_path: Path | None = None) -> Pat
         mid = (c.low + c.high) / 2
         ax.annotate(
             f"{c.low:.2f}–{c.high:.2f}\nsize={c.size}",
-            xy=(annot_x, mid), xycoords="data",
-            xytext=(6, 0), textcoords="offset points",
-            fontsize=8, ha="left", va="center",
+            xy=(annot_x, mid),
+            xycoords="data",
+            xytext=(6, 0),
+            textcoords="offset points",
+            fontsize=8,
+            ha="left",
+            va="center",
             color=st["line"],
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=st["line"], alpha=0.85),
             zorder=6,

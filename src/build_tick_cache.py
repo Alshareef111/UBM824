@@ -10,11 +10,10 @@ disk instead of re-streaming Google Drive.
 
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pandas as pd
 
-from paths import TICK_FILE, TRADES_PARQUET, TICKS_OVERLAP_PARQUET, ensure_dirs
+from paths import TICK_FILE, TICKS_OVERLAP_PARQUET, TRADES_PARQUET, ensure_dirs
 
 OVERLAP_START_DATE = pd.Timestamp("2026-03-17")
 OVERLAP_END_DATE = pd.Timestamp("2026-05-01")
@@ -41,8 +40,10 @@ def main() -> None:
         & (trades["session_date"] <= OVERLAP_END_DATE)
     ].copy()
 
-    print(f"Trades in overlap window (session_date 2026-03-17..2026-05-01): "
-          f"{len(overlap)} / {len(trades)} total")
+    print(
+        f"Trades in overlap window (session_date 2026-03-17..2026-05-01): "
+        f"{len(overlap)} / {len(trades)} total"
+    )
 
     # Session-wide windows: for each session_date that has any overlap trade,
     # cache 13:45 UTC -> 15:31 UTC (covers the 9:46-11:30 NY trading window
@@ -86,7 +87,7 @@ def main() -> None:
     kept = 0
 
     t0 = time.time()
-    with open(TICK_FILE, "r", buffering=4 * 1024 * 1024) as f:
+    with open(TICK_FILE, buffering=4 * 1024 * 1024) as f:
         for line in f:
             total_lines += 1
             mp = line[:13]  # 'YYYYMMDD HHMM'
@@ -108,8 +109,12 @@ def main() -> None:
                 continue
             # In a window — full parse
             try:
-                y = int(line[0:4]); mo = int(line[4:6]); d = int(line[6:8])
-                h = int(line[9:11]); mi = int(line[11:13]); sec = int(line[13:15])
+                y = int(line[0:4])
+                mo = int(line[4:6])
+                d = int(line[6:8])
+                h = int(line[9:11])
+                mi = int(line[11:13])
+                sec = int(line[13:15])
                 us = int(line[16:23]) // 10  # 7-digit 100-ns -> microseconds
                 if us > 999999:
                     us = 999999
@@ -127,20 +132,24 @@ def main() -> None:
 
     elapsed = time.time() - t0
 
-    df = pd.DataFrame({
-        "ts_utc": pd.to_datetime(rec_ts, utc=True),
-        "last": rec_last,
-        "bid": rec_bid,
-        "ask": rec_ask,
-        "volume": rec_vol,
-    })
+    df = pd.DataFrame(
+        {
+            "ts_utc": pd.to_datetime(rec_ts, utc=True),
+            "last": rec_last,
+            "bid": rec_bid,
+            "ask": rec_ask,
+            "volume": rec_vol,
+        }
+    )
     df = df.sort_values("ts_utc").reset_index(drop=True)
     df.to_parquet(TICKS_OVERLAP_PARQUET, index=False)
 
     print()
     print(f"Lines scanned:   {total_lines:>15,}")
     print(f"Ticks cached:    {kept:>15,}")
-    print(f"Cache file:      {TICKS_OVERLAP_PARQUET.name} ({TICKS_OVERLAP_PARQUET.stat().st_size / 1024 / 1024:.2f} MB)")
+    print(
+        f"Cache file:      {TICKS_OVERLAP_PARQUET.name} ({TICKS_OVERLAP_PARQUET.stat().st_size / 1024 / 1024:.2f} MB)"
+    )
     print(f"Elapsed:         {elapsed:.1f} s")
     print(f"Avg lines/sec:   {total_lines / elapsed:,.0f}")
     if kept:

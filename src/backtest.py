@@ -82,8 +82,7 @@ def generate_trades(
         if day_bars.empty:
             continue
 
-        entry_bars = day_bars.between_time("09:45", entry_window_end,
-                                           inclusive="both")
+        entry_bars = day_bars.between_time("09:45", entry_window_end, inclusive="both")
         if entry_bars.empty:
             continue
 
@@ -131,8 +130,7 @@ def generate_trades(
         # The entry bar's intrabar range may already contain stop or target;
         # conservative tiebreaker: stop wins if both.
         post = day_bars[day_bars.index >= entry_ts]
-        exit_window = post.between_time("00:00", forced_exit_time,
-                                        inclusive="both")
+        exit_window = post.between_time("00:00", forced_exit_time, inclusive="both")
 
         exit_ts = exit_price = exit_reason = None
         for ts, bar in exit_window.iterrows():
@@ -165,21 +163,23 @@ def generate_trades(
             pnl_pts = entry_price - exit_price
         pnl_pts -= 2 * SLIPPAGE_POINTS
 
-        trades.append({
-            "session_date": session,
-            "side": entry_side,
-            "entry_ts": entry_ts,
-            "trigger_price": round(trigger_price, 4),
-            "entry_price": round(entry_price, 4),
-            "gap_pts": round(abs(entry_price - trigger_price), 4),
-            "stop_price": round(stop_price, 4),
-            "target_price": round(target_price, 4),
-            "exit_ts": exit_ts,
-            "exit_price": round(exit_price, 4),
-            "exit_reason": exit_reason,
-            "pnl_points": round(pnl_pts, 4),
-            "pnl_dollars": round(pnl_pts * MNQ_MULTIPLIER - 2 * COMMISSION_PER_SIDE, 2),
-        })
+        trades.append(
+            {
+                "session_date": session,
+                "side": entry_side,
+                "entry_ts": entry_ts,
+                "trigger_price": round(trigger_price, 4),
+                "entry_price": round(entry_price, 4),
+                "gap_pts": round(abs(entry_price - trigger_price), 4),
+                "stop_price": round(stop_price, 4),
+                "target_price": round(target_price, 4),
+                "exit_ts": exit_ts,
+                "exit_price": round(exit_price, 4),
+                "exit_reason": exit_reason,
+                "pnl_points": round(pnl_pts, 4),
+                "pnl_dollars": round(pnl_pts * MNQ_MULTIPLIER - 2 * COMMISSION_PER_SIDE, 2),
+            }
+        )
 
     return pd.DataFrame(trades)
 
@@ -205,35 +205,40 @@ def run():
     n_loss = int((trades["pnl_dollars"] < 0).sum())
     net = trades["pnl_dollars"].sum()
 
-    print(f"\n========== TRADE SUMMARY (realistic-fill model) ==========")
+    print("\n========== TRADE SUMMARY (realistic-fill model) ==========")
     print(f"Total trades:     {n}")
-    print(f"Wins:             {n_win} ({n_win/n*100:.1f}%)")
-    print(f"Losses:           {n_loss} ({n_loss/n*100:.1f}%)")
+    print(f"Wins:             {n_win} ({n_win / n * 100:.1f}%)")
+    print(f"Losses:           {n_loss} ({n_loss / n * 100:.1f}%)")
     print(f"Net P&L:          ${net:,.2f}")
     print(f"Avg per trade:    ${trades['pnl_dollars'].mean():,.2f}")
     if n_win > 0 and n_loss > 0:
         aw = trades[trades["pnl_dollars"] > 0]["pnl_dollars"].mean()
         al = trades[trades["pnl_dollars"] < 0]["pnl_dollars"].mean()
         print(f"Avg win/loss:     ${aw:.2f} / ${al:.2f}")
-        print(f"Win/Loss ratio:   {abs(aw/al):.2f}")
-        pf = (trades[trades["pnl_dollars"] > 0]["pnl_dollars"].sum()
-              / abs(trades[trades["pnl_dollars"] < 0]["pnl_dollars"].sum()))
+        print(f"Win/Loss ratio:   {abs(aw / al):.2f}")
+        pf = trades[trades["pnl_dollars"] > 0]["pnl_dollars"].sum() / abs(
+            trades[trades["pnl_dollars"] < 0]["pnl_dollars"].sum()
+        )
         print(f"Profit factor:    {pf:.2f}")
 
-    print(f"\nExit reason:")
+    print("\nExit reason:")
     print(trades["exit_reason"].value_counts().to_string())
 
-    print(f"\nGap-open stats (entry_price - trigger_price):")
+    print("\nGap-open stats (entry_price - trigger_price):")
     print(trades["gap_pts"].describe().to_string())
 
     trades["year"] = pd.to_datetime(trades["session_date"]).dt.year
-    yearly = trades.groupby("year").agg(
-        trades=("pnl_dollars", "count"),
-        wins=("pnl_dollars", lambda x: int((x > 0).sum())),
-        net=("pnl_dollars", "sum"),
-        avg=("pnl_dollars", "mean"),
-    ).round(2)
-    print(f"\n========== YEARLY ==========")
+    yearly = (
+        trades.groupby("year")
+        .agg(
+            trades=("pnl_dollars", "count"),
+            wins=("pnl_dollars", lambda x: int((x > 0).sum())),
+            net=("pnl_dollars", "sum"),
+            avg=("pnl_dollars", "mean"),
+        )
+        .round(2)
+    )
+    print("\n========== YEARLY ==========")
     print(yearly.to_string())
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -263,34 +268,33 @@ def diagnose():
     target_price = trades["target_price"].values
     trigger_price = trades["trigger_price"].values
 
-    intrabar_stop = np.where(is_long, bar_low <= stop_price,
-                              bar_high >= stop_price)
-    intrabar_target = np.where(is_long, bar_high >= target_price,
-                                bar_low <= target_price)
-    gap_open = np.where(is_long, bar_open > trigger_price,
-                         bar_open < trigger_price)
+    intrabar_stop = np.where(is_long, bar_low <= stop_price, bar_high >= stop_price)
+    intrabar_target = np.where(is_long, bar_high >= target_price, bar_low <= target_price)
+    gap_open = np.where(is_long, bar_open > trigger_price, bar_open < trigger_price)
 
-    print(f"========== ENTRY-BAR DIAGNOSTICS ==========")
+    print("========== ENTRY-BAR DIAGNOSTICS ==========")
     print(f"Total trades:                       {len(trades)}")
     print(f"  Recorded winners:                 {won.sum()}")
     print(f"  Recorded losers:                  {lost.sum()}")
 
-    print(f"\n--- Q1: stop crossed on ENTRY bar (intrabar) ---")
-    print(f"Trades where entry bar's range crossed stop: {intrabar_stop.sum()} "
-          f"({intrabar_stop.sum()/len(trades)*100:.1f}%)")
+    print("\n--- Q1: stop crossed on ENTRY bar (intrabar) ---")
+    print(
+        f"Trades where entry bar's range crossed stop: {intrabar_stop.sum()} "
+        f"({intrabar_stop.sum() / len(trades) * 100:.1f}%)"
+    )
     print(f"  ...of those, recorded as WINNERS: {(intrabar_stop & won).sum()}")
     print(f"  ...of those, recorded as LOSERS:  {(intrabar_stop & lost).sum()}")
 
-    print(f"\n--- Q2: target reached on ENTRY bar (intrabar) ---")
-    print(f"Trades where entry bar's range reached target: {intrabar_target.sum()} "
-          f"({intrabar_target.sum()/len(trades)*100:.1f}%)")
+    print("\n--- Q2: target reached on ENTRY bar (intrabar) ---")
+    print(
+        f"Trades where entry bar's range reached target: {intrabar_target.sum()} "
+        f"({intrabar_target.sum() / len(trades) * 100:.1f}%)"
+    )
 
-    print(f"\n--- Q3: entry bar opened past trigger (gap fill, now modeled) ---")
-    print(f"Trades with gap-open: {gap_open.sum()} "
-          f"({gap_open.sum()/len(trades)*100:.1f}%)")
+    print("\n--- Q3: entry bar opened past trigger (gap fill, now modeled) ---")
+    print(f"Trades with gap-open: {gap_open.sum()} ({gap_open.sum() / len(trades) * 100:.1f}%)")
     if gap_open.sum() > 0:
-        gap_pts = np.where(is_long, bar_open - trigger_price,
-                            trigger_price - bar_open)
+        gap_pts = np.where(is_long, bar_open - trigger_price, trigger_price - bar_open)
         gap_pts = gap_pts[gap_open]
         print(f"  Mean gap:   {gap_pts.mean():.2f} pts")
         print(f"  Median gap: {np.median(gap_pts):.2f} pts")
@@ -346,28 +350,35 @@ def walkforward():
     s_train = _period_stats(train)
     s_test = _period_stats(test)
 
-    print(f"\n========== WALK-FORWARD (train 2019-2022 / test 2023-2026) ==========")
-    print(f"Total trades: {len(trades)}   train: {len(train)}   test: {len(test)}"
-          + (f"   (dropped: {dropped})" if dropped else ""))
+    print("\n========== WALK-FORWARD (train 2019-2022 / test 2023-2026) ==========")
+    print(
+        f"Total trades: {len(trades)}   train: {len(train)}   test: {len(test)}"
+        + (f"   (dropped: {dropped})" if dropped else "")
+    )
 
     if s_train["n_trades"] == 0 or s_test["n_trades"] == 0:
         print("\nOne period has zero trades — cannot run comparison.")
         return
 
-    def fmt_money(x): return f"${x:,.2f}"
-    def fmt_pct(x): return f"{x*100:.1f}%"
-    def fmt_ratio(x): return "inf" if not np.isfinite(x) else f"{x:.2f}"
+    def fmt_money(x):
+        return f"${x:,.2f}"
+
+    def fmt_pct(x):
+        return f"{x * 100:.1f}%"
+
+    def fmt_ratio(x):
+        return "inf" if not np.isfinite(x) else f"{x:.2f}"
 
     rows = [
-        ("n_trades",       f"{s_train['n_trades']}",            f"{s_test['n_trades']}"),
-        ("win_rate",       fmt_pct(s_train['win_rate']),        fmt_pct(s_test['win_rate'])),
-        ("net P&L",        fmt_money(s_train['net']),           fmt_money(s_test['net'])),
-        ("avg / trade",    fmt_money(s_train['avg']),           fmt_money(s_test['avg'])),
-        ("avg win",        fmt_money(s_train['avg_win']),       fmt_money(s_test['avg_win'])),
-        ("avg loss",       fmt_money(s_train['avg_loss']),      fmt_money(s_test['avg_loss'])),
-        ("win/loss ratio", fmt_ratio(s_train['wl_ratio']),      fmt_ratio(s_test['wl_ratio'])),
-        ("profit factor",  fmt_ratio(s_train['profit_factor']), fmt_ratio(s_test['profit_factor'])),
-        ("max drawdown",   fmt_money(s_train['max_dd']),        fmt_money(s_test['max_dd'])),
+        ("n_trades", f"{s_train['n_trades']}", f"{s_test['n_trades']}"),
+        ("win_rate", fmt_pct(s_train["win_rate"]), fmt_pct(s_test["win_rate"])),
+        ("net P&L", fmt_money(s_train["net"]), fmt_money(s_test["net"])),
+        ("avg / trade", fmt_money(s_train["avg"]), fmt_money(s_test["avg"])),
+        ("avg win", fmt_money(s_train["avg_win"]), fmt_money(s_test["avg_win"])),
+        ("avg loss", fmt_money(s_train["avg_loss"]), fmt_money(s_test["avg_loss"])),
+        ("win/loss ratio", fmt_ratio(s_train["wl_ratio"]), fmt_ratio(s_test["wl_ratio"])),
+        ("profit factor", fmt_ratio(s_train["profit_factor"]), fmt_ratio(s_test["profit_factor"])),
+        ("max drawdown", fmt_money(s_train["max_dd"]), fmt_money(s_test["max_dd"])),
     ]
     label_w = max(len(r[0]) for r in rows)
     col_w = max(max(len(r[1]), len(r[2])) for r in rows) + 2
@@ -386,14 +397,20 @@ def walkforward():
 
     same_sign = (s_train["avg"] > 0) == (s_test["avg"] > 0)
     if p_val < 0.05:
-        verdict = ("REGIME DEPENDENCY — train and test per-trade returns differ significantly "
-                   f"(p={p_val:.4f}). Out-of-sample behavior is not the same as in-sample.")
+        verdict = (
+            "REGIME DEPENDENCY — train and test per-trade returns differ significantly "
+            f"(p={p_val:.4f}). Out-of-sample behavior is not the same as in-sample."
+        )
     elif not same_sign:
-        verdict = ("INCONSISTENT — t-test not significant, but per-trade averages have "
-                   "opposite signs. Underpowered or genuinely regime-dependent; treat with caution.")
+        verdict = (
+            "INCONSISTENT — t-test not significant, but per-trade averages have "
+            "opposite signs. Underpowered or genuinely regime-dependent; treat with caution."
+        )
     else:
-        verdict = ("CONSISTENT — no statistically significant difference between train and test "
-                   f"per-trade returns (p={p_val:.4f}). Same-signed averages.")
+        verdict = (
+            "CONSISTENT — no statistically significant difference between train and test "
+            f"per-trade returns (p={p_val:.4f}). Same-signed averages."
+        )
     print(f"\nVerdict: {verdict}")
 
 

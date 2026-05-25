@@ -8,6 +8,7 @@ Computes:
   P3: overlay-vs-engine comparison for the cluster-size filter test
   P4: same-bar stop+target frequency on baseline V2+40/40 trades
 """
+
 from __future__ import annotations
 
 import sys
@@ -21,8 +22,9 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from paths import (
-    ARCHIVE_DIR, BARS_PARQUET,
-    TICKS_OVERLAP_PARQUET, TRADES_PARQUET, VERIFICATION_PARQUET,
+    ARCHIVE_DIR,
+    BARS_PARQUET,
+    VERIFICATION_PARQUET,
 )
 
 AUDIT_DIR = ARCHIVE_DIR / "audit_framework_integrity_20260515"
@@ -64,27 +66,49 @@ def p1_tick_vs_bar():
         rel = (bar_pnl_usd - tick_pnl_usd) / abs(tick_pnl_usd) * 100
         print(f"Relative over/under-statement: {rel:+.1f}%")
     elif bar_pnl_usd != 0:
-        print(f"Tick P&L is $0 — bar simulator credits ${bar_pnl_usd:,.0f} that tick replay does not (relative = ∞)")
+        print(
+            f"Tick P&L is $0 — bar simulator credits ${bar_pnl_usd:,.0f} that tick replay does not (relative = ∞)"
+        )
     print(f"\nBar win rate:    {bar_wr:.1%}")
     print(f"Tick win rate:   {tick_wr:.1%}")
-    print(f"Outcome match:   {matched}/{len(v)} ({matched/len(v):.1%})")
+    print(f"Outcome match:   {matched}/{len(v)} ({matched / len(v):.1%})")
 
-    print(f"\nPer-trade delta (bar - tick) distribution:")
+    print("\nPer-trade delta (bar - tick) distribution:")
     print(f"  median: ${deltas.median():,.2f}")
     print(f"  p10:    ${deltas.quantile(0.10):,.2f}")
     print(f"  p90:    ${deltas.quantile(0.90):,.2f}")
     print(f"  min/max ${deltas.min():,.2f} / ${deltas.max():,.2f}")
 
-    mismatches = v[~v["match"]][["session_date", "side", "exit_reason",
-                                  "sim_outcome", "tick_outcome",
-                                  "bar_usd", "tick_usd", "delta_usd"]]
+    mismatches = v[~v["match"]][
+        [
+            "session_date",
+            "side",
+            "exit_reason",
+            "sim_outcome",
+            "tick_outcome",
+            "bar_usd",
+            "tick_usd",
+            "delta_usd",
+        ]
+    ]
     print(f"\nMismatched trades ({len(mismatches)}):")
     print(mismatches.to_string(index=False))
 
     out_path = AUDIT_DIR / "p1_tick_vs_bar_per_trade.parquet"
-    v[["session_date", "side", "entry_time", "exit_reason",
-       "sim_outcome", "tick_outcome", "match",
-       "bar_usd", "tick_usd", "delta_usd"]].to_parquet(out_path, index=False)
+    v[
+        [
+            "session_date",
+            "side",
+            "entry_time",
+            "exit_reason",
+            "sim_outcome",
+            "tick_outcome",
+            "match",
+            "bar_usd",
+            "tick_usd",
+            "delta_usd",
+        ]
+    ].to_parquet(out_path, index=False)
     print(f"\nWrote {out_path}")
 
     return {
@@ -95,7 +119,8 @@ def p1_tick_vs_bar():
         "match_rate": matched / len(v),
         "n_mismatches": len(mismatches),
         "relative_overstatement_pct": ((bar_pnl_usd - tick_pnl_usd) / abs(tick_pnl_usd) * 100)
-            if tick_pnl_usd != 0 else float("inf"),
+        if tick_pnl_usd != 0
+        else float("inf"),
     }
 
 
@@ -138,23 +163,25 @@ def p3_overlay_vs_engine():
 
     # Compute set-difference between overlay and engine
     def keyset(df):
-        return set(zip(
-            pd.to_datetime(df["session_date"]).astype("int64"),
-            df["cluster_low"].astype(float),
-            df["cluster_high"].astype(float),
-        ))
+        return set(
+            zip(
+                pd.to_datetime(df["session_date"]).astype("int64"),
+                df["cluster_low"].astype(float),
+                df["cluster_high"].astype(float),
+            )
+        )
 
     f1_o_k = keyset(f1_overlay)
     f1_e_k = keyset(f1_engine)
     f2_o_k = keyset(f2_overlay)
     f2_e_k = keyset(f2_engine)
 
-    print(f"\nF1 set comparison (clusters keyed by session_date + cluster_low + cluster_high):")
+    print("\nF1 set comparison (clusters keyed by session_date + cluster_low + cluster_high):")
     print(f"  overlay only (in baseline filtered, NOT triggered by engine): {len(f1_o_k - f1_e_k)}")
     print(f"  engine only  (triggered by engine, NOT in baseline filtered): {len(f1_e_k - f1_o_k)}")
     print(f"  shared:                                                       {len(f1_o_k & f1_e_k)}")
 
-    print(f"\nF2 set comparison:")
+    print("\nF2 set comparison:")
     print(f"  overlay only: {len(f2_o_k - f2_e_k)}")
     print(f"  engine only:  {len(f2_e_k - f2_o_k)}")
     print(f"  shared:       {len(f2_o_k & f2_e_k)}")
@@ -163,13 +190,15 @@ def p3_overlay_vs_engine():
     summary.to_parquet(AUDIT_DIR / "p3_overlay_vs_engine.parquet", index=False)
     print(f"\nWrote {AUDIT_DIR / 'p3_overlay_vs_engine.parquet'}")
 
-    return {"rows": rows,
-            "f1_overlay_only": len(f1_o_k - f1_e_k),
-            "f1_engine_only": len(f1_e_k - f1_o_k),
-            "f1_shared": len(f1_o_k & f1_e_k),
-            "f2_overlay_only": len(f2_o_k - f2_e_k),
-            "f2_engine_only": len(f2_e_k - f2_o_k),
-            "f2_shared": len(f2_o_k & f2_e_k)}
+    return {
+        "rows": rows,
+        "f1_overlay_only": len(f1_o_k - f1_e_k),
+        "f1_engine_only": len(f1_e_k - f1_o_k),
+        "f1_shared": len(f1_o_k & f1_e_k),
+        "f2_overlay_only": len(f2_o_k - f2_e_k),
+        "f2_engine_only": len(f2_e_k - f2_o_k),
+        "f2_shared": len(f2_o_k & f2_e_k),
+    }
 
 
 def p4_same_bar_stop_target():
@@ -222,17 +251,19 @@ def p4_same_bar_stop_target():
         if stop_reach and target_reach:
             entry_both_reach += 1
             if len(samples_entry) < 5:
-                samples_entry.append({
-                    "session_date": str(t.session_date),
-                    "side": t.side,
-                    "entry_time": str(t.entry_time),
-                    "entry_price": float(t.entry_price),
-                    "bar_high": float(entry_bar["high"]),
-                    "bar_low": float(entry_bar["low"]),
-                    "stop": float(stop_p),
-                    "target": float(target_p),
-                    "exit_reason": t.exit_reason,
-                })
+                samples_entry.append(
+                    {
+                        "session_date": str(t.session_date),
+                        "side": t.side,
+                        "entry_time": str(t.entry_time),
+                        "entry_price": float(t.entry_price),
+                        "bar_high": float(entry_bar["high"]),
+                        "bar_low": float(entry_bar["low"]),
+                        "stop": float(stop_p),
+                        "target": float(target_p),
+                        "exit_reason": t.exit_reason,
+                    }
+                )
 
         # Exit-bar check (only if exit_time != entry_time)
         if t.exit_time == t.entry_time:
@@ -253,46 +284,65 @@ def p4_same_bar_stop_target():
         if stop_reach_x and target_reach_x:
             exit_bar_both_reach += 1
             if len(samples_exit) < 5:
-                samples_exit.append({
-                    "session_date": str(t.session_date),
-                    "side": t.side,
-                    "exit_time": str(t.exit_time),
-                    "entry_price": float(t.entry_price),
-                    "exit_bar_high": float(exit_bar["high"]),
-                    "exit_bar_low": float(exit_bar["low"]),
-                    "stop": float(stop_p),
-                    "target": float(target_p),
-                    "exit_reason": t.exit_reason,
-                })
+                samples_exit.append(
+                    {
+                        "session_date": str(t.session_date),
+                        "side": t.side,
+                        "exit_time": str(t.exit_time),
+                        "entry_price": float(t.entry_price),
+                        "exit_bar_high": float(exit_bar["high"]),
+                        "exit_bar_low": float(exit_bar["low"]),
+                        "stop": float(stop_p),
+                        "target": float(target_p),
+                        "exit_reason": t.exit_reason,
+                    }
+                )
 
     n = len(trades)
     print(f"\nTotal trades: {n}")
-    print(f"Entry-bar same-bar entry+exit (exit_time == entry_time): {same_bar_entry_exit} ({same_bar_entry_exit/n:.1%})")
-    print(f"Entry-bar: stop AND target both reachable: {entry_both_reach} ({entry_both_reach/n:.1%})  [D-014 territory]")
-    print(f"Exit-bar (non-entry, non-force):  stop AND target both reachable: {exit_bar_both_reach} ({exit_bar_both_reach/n:.1%})  [D-005 territory]")
+    print(
+        f"Entry-bar same-bar entry+exit (exit_time == entry_time): {same_bar_entry_exit} ({same_bar_entry_exit / n:.1%})"
+    )
+    print(
+        f"Entry-bar: stop AND target both reachable: {entry_both_reach} ({entry_both_reach / n:.1%})  [D-014 territory]"
+    )
+    print(
+        f"Exit-bar (non-entry, non-force):  stop AND target both reachable: {exit_bar_both_reach} ({exit_bar_both_reach / n:.1%})  [D-005 territory]"
+    )
 
-    print(f"\nSample entry-bar same-bar-both-reach (max 5):")
+    print("\nSample entry-bar same-bar-both-reach (max 5):")
     for s in samples_entry:
         print(f"  {s}")
-    print(f"\nSample exit-bar both-reach (max 5):")
+    print("\nSample exit-bar both-reach (max 5):")
     for s in samples_exit:
         print(f"  {s}")
 
-    out = pd.DataFrame({
-        "metric": [
-            "n_trades", "same_bar_entry_exit",
-            "entry_bar_both_reachable", "exit_bar_both_reachable",
-        ],
-        "value": [n, same_bar_entry_exit, entry_both_reach, exit_bar_both_reach],
-        "fraction": [1.0, same_bar_entry_exit / n,
-                     entry_both_reach / n, exit_bar_both_reach / n],
-    })
+    out = pd.DataFrame(
+        {
+            "metric": [
+                "n_trades",
+                "same_bar_entry_exit",
+                "entry_bar_both_reachable",
+                "exit_bar_both_reachable",
+            ],
+            "value": [n, same_bar_entry_exit, entry_both_reach, exit_bar_both_reach],
+            "fraction": [
+                1.0,
+                same_bar_entry_exit / n,
+                entry_both_reach / n,
+                exit_bar_both_reach / n,
+            ],
+        }
+    )
     out.to_parquet(AUDIT_DIR / "p4_same_bar_stop_target.parquet", index=False)
     print(f"\nWrote {AUDIT_DIR / 'p4_same_bar_stop_target.parquet'}")
 
-    return {"n": n, "same_bar_entry_exit": same_bar_entry_exit,
-            "entry_both_reach": entry_both_reach,
-            "exit_both_reach": exit_bar_both_reach}
+    return {
+        "n": n,
+        "same_bar_entry_exit": same_bar_entry_exit,
+        "entry_both_reach": entry_both_reach,
+        "exit_both_reach": exit_bar_both_reach,
+    }
 
 
 def p4b_d014_chronology_risk():
@@ -350,17 +400,21 @@ def p4b_d014_chronology_risk():
 
     print(f"Same-bar entry+exit trades: {len(sb)}")
     print(f"  by exit reason: {sb['exit_reason'].value_counts().to_dict()}")
-    print(f"\nRisky chronology (bar.open already past the credited exit level):")
+    print("\nRisky chronology (bar.open already past the credited exit level):")
     print(f"  risky target wins: {risky_target}")
     print(f"  risky stop losses: {risky_stop}")
-    print(f"  total risky:       {risky_target + risky_stop} / {len(sb)} same-bar trades "
-          f"= {(risky_target + risky_stop) / max(1, len(sb)):.1%} of same-bar; "
-          f"{(risky_target + risky_stop) / len(trades):.1%} of all 908 trades")
+    print(
+        f"  total risky:       {risky_target + risky_stop} / {len(sb)} same-bar trades "
+        f"= {(risky_target + risky_stop) / max(1, len(sb)):.1%} of same-bar; "
+        f"{(risky_target + risky_stop) / len(trades):.1%} of all 908 trades"
+    )
 
-    return {"same_bar_count": int(len(sb)),
-            "risky_target": int(risky_target),
-            "risky_stop": int(risky_stop),
-            "risky_total": int(risky_target + risky_stop)}
+    return {
+        "same_bar_count": int(len(sb)),
+        "risky_target": int(risky_target),
+        "risky_stop": int(risky_stop),
+        "risky_total": int(risky_target + risky_stop),
+    }
 
 
 def p5_nan_indicator():
@@ -397,9 +451,9 @@ def p5_nan_indicator():
     n_any_nan = int(trades["any_nan"].sum())
 
     print(f"Total trades: {n}")
-    print(f"ADX NaN at fill: {n_adx_nan} ({n_adx_nan/n:.1%})")
-    print(f"DI  NaN at fill: {n_di_nan} ({n_di_nan/n:.1%})")
-    print(f"Either NaN:      {n_any_nan} ({n_any_nan/n:.1%})")
+    print(f"ADX NaN at fill: {n_adx_nan} ({n_adx_nan / n:.1%})")
+    print(f"DI  NaN at fill: {n_di_nan} ({n_di_nan / n:.1%})")
+    print(f"Either NaN:      {n_any_nan} ({n_any_nan / n:.1%})")
 
     if n_any_nan > 0:
         nan_trades = trades[trades["any_nan"]]
@@ -410,14 +464,24 @@ def p5_nan_indicator():
         wr = float((nan_trades["pnl_dollars"] > 0).mean())
         print(f"NaN-defaulted trade P&L: ${pnl:,.2f}, WR {wr:.1%}")
 
-    out = trades[["session_date", "entry_time", "side", "pnl_dollars",
-                  "cluster_label", "adx_at_fill", "di_at_fill",
-                  "adx_nan", "di_nan", "any_nan"]]
+    out = trades[
+        [
+            "session_date",
+            "entry_time",
+            "side",
+            "pnl_dollars",
+            "cluster_label",
+            "adx_at_fill",
+            "di_at_fill",
+            "adx_nan",
+            "di_nan",
+            "any_nan",
+        ]
+    ]
     out.to_parquet(AUDIT_DIR / "p5_nan_indicator_per_trade.parquet", index=False)
     print(f"\nWrote {AUDIT_DIR / 'p5_nan_indicator_per_trade.parquet'}")
 
-    return {"n_trades": n, "n_adx_nan": n_adx_nan, "n_di_nan": n_di_nan,
-            "n_any_nan": n_any_nan}
+    return {"n_trades": n, "n_adx_nan": n_adx_nan, "n_di_nan": n_di_nan, "n_any_nan": n_any_nan}
 
 
 def main():
@@ -431,12 +495,18 @@ def main():
     print("\n" + "=" * 78)
     print("AUDIT DIAGNOSTIC SUMMARY")
     print("=" * 78)
-    print(f"P1 (32-trade verification): bar ${p1['bar_pnl_usd']:,.0f} vs tick ${p1['tick_pnl_usd']:,.0f}, "
-          f"delta ${p1['delta_usd']:,.0f}, mismatches {p1['n_mismatches']}/{p1['n_trades']}")
-    print(f"P3 cluster-size overlay vs engine — see results above")
-    print(f"P4: entry_both_reach {p4['entry_both_reach']}/{p4['n']} ({p4['entry_both_reach']/p4['n']:.1%}), "
-          f"exit_both_reach {p4['exit_both_reach']}/{p4['n']} ({p4['exit_both_reach']/p4['n']:.1%})")
-    print(f"P4b: D-014 risky chronology {p4b['risky_total']}/{p4b['same_bar_count']} same-bar trades")
+    print(
+        f"P1 (32-trade verification): bar ${p1['bar_pnl_usd']:,.0f} vs tick ${p1['tick_pnl_usd']:,.0f}, "
+        f"delta ${p1['delta_usd']:,.0f}, mismatches {p1['n_mismatches']}/{p1['n_trades']}"
+    )
+    print("P3 cluster-size overlay vs engine — see results above")
+    print(
+        f"P4: entry_both_reach {p4['entry_both_reach']}/{p4['n']} ({p4['entry_both_reach'] / p4['n']:.1%}), "
+        f"exit_both_reach {p4['exit_both_reach']}/{p4['n']} ({p4['exit_both_reach'] / p4['n']:.1%})"
+    )
+    print(
+        f"P4b: D-014 risky chronology {p4b['risky_total']}/{p4b['same_bar_count']} same-bar trades"
+    )
     print(f"P5: any-NaN at fill {p5['n_any_nan']}/{p5['n_trades']}")
 
 

@@ -19,8 +19,7 @@ def main():
     m = run_locked(verbose=False)
 
     failures = []
-    print(f"{'metric':<14}  {'actual':>14}  {'expected':>12}  "
-          f"{'tol':>8}  {'verdict':<8}")
+    print(f"{'metric':<14}  {'actual':>14}  {'expected':>12}  {'tol':>8}  {'verdict':<8}")
     print("-" * 66)
     for key, (expected, tol) in LOCKED_EXPECTED.items():
         actual = m[key]
@@ -28,8 +27,7 @@ def main():
         if not ok:
             failures.append((key, actual, expected, tol))
         verdict = "OK" if ok else "DRIFT"
-        print(f"{key:<14}  {actual:>14.4f}  {expected:>12.4f}  "
-              f"±{tol:<7.2f}  {verdict}")
+        print(f"{key:<14}  {actual:>14.4f}  {expected:>12.4f}  ±{tol:<7.2f}  {verdict}")
 
     print()
     if failures:

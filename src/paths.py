@@ -3,6 +3,7 @@
 All scripts must import from here instead of using Path(__file__).parent.
 This keeps file locations in one place — change a path here, every script updates.
 """
+
 from pathlib import Path
 
 # Project root = parent of src/
@@ -24,7 +25,9 @@ ARCHIVE_DIR = RESULTS_DIR / "archive"
 RAW_CSV_FILES = sorted(RAW_DIR.glob("glbx-mdp3-*.ohlcv-1m.csv"))
 # Deprecated alias for back-compat. Prefer RAW_CSV_FILES. Resolves to the
 # earliest batch when present, else the original baseline filename.
-RAW_CSV = RAW_CSV_FILES[0] if RAW_CSV_FILES else RAW_DIR / "glbx-mdp3-20240401-20260501.ohlcv-1m.csv"
+RAW_CSV = (
+    RAW_CSV_FILES[0] if RAW_CSV_FILES else RAW_DIR / "glbx-mdp3-20240401-20260501.ohlcv-1m.csv"
+)
 TICK_FILE = RAW_DIR / "MNQ 06-26.LastT.txt"
 MANIFEST_JSON = RAW_DIR / "manifest.json"
 METADATA_JSON = RAW_DIR / "metadata.json"
@@ -38,6 +41,7 @@ ORB_EXCLUDED_PARQUET = PROCESSED_DIR / "orb_excluded.parquet"
 TRADES_PARQUET = PROCESSED_DIR / "trades.parquet"
 TICKS_OVERLAP_PARQUET = PROCESSED_DIR / "ticks_overlap.parquet"
 VERIFICATION_PARQUET = PROCESSED_DIR / "verification_results.parquet"
+
 
 # Helper to ensure all dirs exist (call from any script if needed)
 def ensure_dirs() -> None:

@@ -16,6 +16,7 @@ Per-config OOS evaluation (locked framework #4b, #5, #6a, #6b):
 Window membership uses session_date (calendar date) — tz-free and matches
 the rest of the project's session-date semantics.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,9 +40,9 @@ NULL_P95_SHARPE_LIKE = 1.06  # 95th percentile from phase0_null_20260512 (50 Ran
 class Window:
     name: str
     is_start: pd.Timestamp
-    is_end: pd.Timestamp     # exclusive; also = oos_start
+    is_end: pd.Timestamp  # exclusive; also = oos_start
     oos_start: pd.Timestamp
-    oos_end: pd.Timestamp    # exclusive
+    oos_end: pd.Timestamp  # exclusive
 
 
 def make_windows() -> list[Window]:
@@ -52,24 +53,30 @@ def make_windows() -> list[Window]:
         is_end = is_start + pd.DateOffset(years=IS_YEARS)
         oos_start = is_end
         oos_end = oos_start + pd.DateOffset(years=OOS_YEARS)
-        windows.append(Window(
-            name=f"W{i+1}",
-            is_start=is_start,
-            is_end=is_end,
-            oos_start=oos_start,
-            oos_end=oos_end,
-        ))
+        windows.append(
+            Window(
+                name=f"W{i + 1}",
+                is_start=is_start,
+                is_end=is_end,
+                oos_start=oos_start,
+                oos_end=oos_end,
+            )
+        )
     return windows
 
 
-def filter_trades_to_window(trades_df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+def filter_trades_to_window(
+    trades_df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp
+) -> pd.DataFrame:
     """Return trades whose session_date falls in [start, end)."""
     s = pd.to_datetime(trades_df["session_date"])
     mask = (s >= start) & (s < end)
     return trades_df[mask]
 
 
-def per_window_pnl(trades_df: pd.DataFrame, windows: list[Window], slice_: str = "oos") -> dict[str, float]:
+def per_window_pnl(
+    trades_df: pd.DataFrame, windows: list[Window], slice_: str = "oos"
+) -> dict[str, float]:
     """Dict of window_name -> total pnl_dollars in that window's IS or OOS slice."""
     out: dict[str, float] = {}
     for w in windows:
@@ -105,8 +112,11 @@ def median_pnl(per_window: dict[str, float]) -> float:
     return float(np.median(vals)) if len(vals) else float("nan")
 
 
-def qualifies(per_window: dict[str, float], total_pnl: float | None = None,
-              sharpe_threshold: float | None = None) -> bool:
+def qualifies(
+    per_window: dict[str, float],
+    total_pnl: float | None = None,
+    sharpe_threshold: float | None = None,
+) -> bool:
     """Corner-qualification gates.
 
     3-gate (Phases 1-3, default): sign >= 6/7 AND median(OOS) > 0.
@@ -134,5 +144,7 @@ def summarize(per_window: dict[str, float], label: str = "", total_pnl: float | 
     med = median_pnl(per_window)
     sign = sign_stability_count(per_window)
     qual = "QUALIFIED" if qualifies(per_window, total_pnl=total_pnl) else "REJECTED "
-    return (f"{label:24s} median=${med:>9.0f}  sharpe_like={score:>7.3f}  "
-            f"sign={sign}/{N_WINDOWS}  {qual}")
+    return (
+        f"{label:24s} median=${med:>9.0f}  sharpe_like={score:>7.3f}  "
+        f"sign={sign}/{N_WINDOWS}  {qual}"
+    )

@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
-from paths import RAW_CSV_FILES, BARS_PARQUET, ROLLS_PARQUET, ensure_dirs
+from paths import BARS_PARQUET, RAW_CSV_FILES, ROLLS_PARQUET, ensure_dirs
 
 OUTRIGHT_REGEX = re.compile(r"^MNQ[HMUZ]\d+$")
 MONTH_IDX = {"H": 0, "M": 1, "U": 2, "Z": 3}
@@ -59,11 +59,7 @@ def add_session_date(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def assign_front_months(df: pd.DataFrame) -> pd.DataFrame:
-    daily_vol = (
-        df.groupby(["session_date", "symbol"])["volume"]
-        .sum()
-        .unstack(fill_value=0)
-    )
+    daily_vol = df.groupby(["session_date", "symbol"])["volume"].sum().unstack(fill_value=0)
 
     rows = []
     current = None
@@ -115,13 +111,15 @@ def compute_roll_gaps(raw: pd.DataFrame, transitions: list) -> pd.DataFrame:
             new_first = new_post["close"].iloc[0] if not new_post.empty else np.nan
             gap = float(new_first - old_last)
             ref_ts = pd.NaT
-        records.append({
-            "roll_date": roll_date,
-            "old_contract": old,
-            "new_contract": new,
-            "gap": gap,
-            "ref_ts": ref_ts,
-        })
+        records.append(
+            {
+                "roll_date": roll_date,
+                "old_contract": old,
+                "new_contract": new,
+                "gap": gap,
+                "ref_ts": ref_ts,
+            }
+        )
     return pd.DataFrame(records)
 
 
@@ -160,10 +158,14 @@ def sanity_checks(out: pd.DataFrame) -> None:
     assert neg_vol == 0, f"Negative volumes: {neg_vol} bars"
 
     hi_violations = (out["high"] < out[["open", "close"]].max(axis=1)).sum()
-    assert hi_violations == 0, f"OHLC integrity (high): {hi_violations} bars where high < max(open, close)"
+    assert hi_violations == 0, (
+        f"OHLC integrity (high): {hi_violations} bars where high < max(open, close)"
+    )
 
     lo_violations = (out["low"] > out[["open", "close"]].min(axis=1)).sum()
-    assert lo_violations == 0, f"OHLC integrity (low): {lo_violations} bars where low > min(open, close)"
+    assert lo_violations == 0, (
+        f"OHLC integrity (low): {lo_violations} bars where low > min(open, close)"
+    )
 
     weekday = out["session_date"].dt.weekday
     bad_days = out.loc[weekday >= 5, "session_date"].unique()
@@ -173,9 +175,7 @@ def sanity_checks(out: pd.DataFrame) -> None:
 def main() -> None:
     ensure_dirs()
     if not RAW_CSV_FILES:
-        raise FileNotFoundError(
-            "No glbx-mdp3-*.ohlcv-1m.csv files found in data/raw/"
-        )
+        raise FileNotFoundError("No glbx-mdp3-*.ohlcv-1m.csv files found in data/raw/")
     print(f"Loading {len(RAW_CSV_FILES)} raw CSV file(s)...")
     parts = []
     for p in RAW_CSV_FILES:
@@ -186,7 +186,9 @@ def main() -> None:
     before = len(raw)
     raw = raw.drop_duplicates(subset=["ts_event", "symbol"], keep="first")
     raw = raw.sort_values("ts_event").reset_index(drop=True)
-    print(f"  Combined: {len(raw):,} outright bars across {raw['symbol'].nunique()} contracts (deduped {before - len(raw)} rows)")
+    print(
+        f"  Combined: {len(raw):,} outright bars across {raw['symbol'].nunique()} contracts (deduped {before - len(raw)} rows)"
+    )
 
     raw = add_session_date(raw)
 
@@ -211,8 +213,19 @@ def main() -> None:
     adjusted = apply_panama_adjustment(front_bars, rolls)
 
     out = (
-        adjusted[["ts_event", "ts_ny", "session_date", "symbol",
-                  "open", "high", "low", "close", "volume"]]
+        adjusted[
+            [
+                "ts_event",
+                "ts_ny",
+                "session_date",
+                "symbol",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+            ]
+        ]
         .rename(columns={"ts_event": "ts_utc", "symbol": "contract"})
         .sort_values("ts_utc")
         .reset_index(drop=True)

@@ -31,6 +31,7 @@ Mechanism categories:
                       unverifiable here, awaiting wider tick acquisition
   OTHER               residual mismatch not attributed to a known mechanism
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -84,9 +85,7 @@ def verify_inputs() -> tuple[str, str]:
     sample_sha = sha256(SAMPLE_CSV)
     if trades_sha != EXPECTED_TRADES_SHA:
         sys.exit(
-            f"FAIL: trades sha256 mismatch\n"
-            f"  got:    {trades_sha}\n"
-            f"  expect: {EXPECTED_TRADES_SHA}"
+            f"FAIL: trades sha256 mismatch\n  got:    {trades_sha}\n  expect: {EXPECTED_TRADES_SHA}"
         )
     if sample_sha != EXPECTED_SAMPLE_SHA:
         sys.exit(
@@ -99,8 +98,10 @@ def verify_inputs() -> tuple[str, str]:
 
 # ---------------- Per-trade replay ----------------
 
-def replay_trade(trade: dict, ticks_df: pd.DataFrame,
-                 tick_min: pd.Timestamp, tick_max: pd.Timestamp) -> dict:
+
+def replay_trade(
+    trade: dict, ticks_df: pd.DataFrame, tick_min: pd.Timestamp, tick_max: pd.Timestamp
+) -> dict:
     """Replay a single trade against tick data.
 
     Reuses verify_ticks.py's threshold-cross logic for entry fill and
@@ -137,9 +138,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
 
     # Entry-minute slice
     entry_window_end = entry_time + pd.Timedelta(seconds=ENTRY_MINUTE_SEC)
-    em = ticks_df[
-        (ticks_df["ts_utc"] >= entry_time) & (ticks_df["ts_utc"] < entry_window_end)
-    ]
+    em = ticks_df[(ticks_df["ts_utc"] >= entry_time) & (ticks_df["ts_utc"] < entry_window_end)]
     last_arr = em["last"].to_numpy()
     ts_arr = em["ts_utc"].to_numpy()
 
@@ -189,9 +188,7 @@ def replay_trade(trade: dict, ticks_df: pd.DataFrame,
     )
     fc_utc = fc_ny.tz_convert("UTC")
 
-    after = ticks_df[
-        (ticks_df["ts_utc"] > fill_ts) & (ticks_df["ts_utc"] < fc_utc)
-    ]
+    after = ticks_df[(ticks_df["ts_utc"] > fill_ts) & (ticks_df["ts_utc"] < fc_utc)]
     a_last = after["last"].to_numpy()
     a_ts = after["ts_utc"].to_numpy()
 
@@ -272,8 +269,10 @@ def attribute_mechanism(trade: dict, replay: dict) -> str:
 
 # ---------------- Report rendering ----------------
 
-def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
-                 tmin: pd.Timestamp, tmax: pd.Timestamp) -> str:
+
+def build_report(
+    summary: dict, recon: pd.DataFrame, sample_dates: set, tmin: pd.Timestamp, tmax: pd.Timestamp
+) -> str:
     lines: list[str] = []
     lines.append(f"# V2 + 40/40 tick replayer — Phase 2 run {summary['run_timestamp']}")
     lines.append("")
@@ -288,8 +287,7 @@ def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
     lines.append(f"- Trades parquet sha256: `{summary['trades_sha256']}`")
     lines.append(f"- Phase 1 sample CSV sha256: `{summary['sample_sha256']}`")
     lines.append(
-        f"- Tick coverage: {tmin} → {tmax}  "
-        f"({summary['tick_coverage']['n_ticks']:,} ticks)"
+        f"- Tick coverage: {tmin} → {tmax}  ({summary['tick_coverage']['n_ticks']:,} ticks)"
     )
     lines.append(
         f"- Bracket: {summary['bracket']['stop_points']:.0f} / "
@@ -372,6 +370,7 @@ def build_report(summary: dict, recon: pd.DataFrame, sample_dates: set,
 
 # ---------------- Main ----------------
 
+
 def main() -> None:
     print("=" * 76)
     print("V2 + 40/40 tick replayer — Phase 2 v1")
@@ -395,8 +394,10 @@ def main() -> None:
     sample = pd.read_csv(SAMPLE_CSV)
     sample_dates = set(pd.to_datetime(sample["date"]).dt.date)
 
-    print(f"Loaded:        {len(trades)} trades, {len(ticks):,} ticks, "
-          f"{len(sample_dates)} sample dates")
+    print(
+        f"Loaded:        {len(trades)} trades, {len(ticks):,} ticks, "
+        f"{len(sample_dates)} sample dates"
+    )
     print(f"Tick coverage: {tick_min}  ->  {tick_max}")
 
     sd_only = trades["session_date"].dt.date
@@ -478,8 +479,8 @@ def main() -> None:
     print()
     print(f"Output dir: {out_dir}")
     print(f"  reconciliation.parquet  ({len(recon)} rows)")
-    print(f"  summary.json")
-    print(f"  report.md")
+    print("  summary.json")
+    print("  report.md")
     print()
     print(json.dumps(summary, indent=2, default=str))
 

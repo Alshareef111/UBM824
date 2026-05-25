@@ -17,11 +17,9 @@ Run:
 import datetime as dt
 import sys
 
-import numpy as np
 import pandas as pd
 
 from src.vbt_backtest import generate_signals
-
 
 NY = "America/New_York"
 
@@ -34,11 +32,15 @@ def _bars(rows):
     for date_str, time_str, o, h, l, c in rows:
         ts = pd.Timestamp(f"{date_str} {time_str}", tz=NY)
         idx.append(ts)
-        recs.append({
-            "open": float(o), "high": float(h),
-            "low": float(l), "close": float(c),
-            "session_date": dt.date.fromisoformat(date_str),
-        })
+        recs.append(
+            {
+                "open": float(o),
+                "high": float(h),
+                "low": float(l),
+                "close": float(c),
+                "session_date": dt.date.fromisoformat(date_str),
+            }
+        )
     return pd.DataFrame(recs, index=pd.DatetimeIndex(idx))
 
 
@@ -48,15 +50,17 @@ def _cands(rows):
     entry_location='high_low' uses high/low as anchors."""
     recs = []
     for i, (date_str, hi, lo) in enumerate(rows):
-        recs.append({
-            "session_date": dt.date.fromisoformat(date_str),
-            "cluster_id": i,
-            "center": (hi + lo) / 2.0,
-            "median": (hi + lo) / 2.0,
-            "n_levels": 3,
-            "low": float(lo),
-            "high": float(hi),
-        })
+        recs.append(
+            {
+                "session_date": dt.date.fromisoformat(date_str),
+                "cluster_id": i,
+                "center": (hi + lo) / 2.0,
+                "median": (hi + lo) / 2.0,
+                "n_levels": 3,
+                "low": float(lo),
+                "high": float(hi),
+            }
+        )
     return pd.DataFrame(recs)
 
 
@@ -75,7 +79,8 @@ def _session_entries(long_e, short_e, entry_p, session_date):
     """All bars on session_date that fired an entry. Returns list of
     (ts, side, fill)."""
     in_session = pd.Series(
-        long_e.index.tz_convert(NY).date == session_date, index=long_e.index,
+        long_e.index.tz_convert(NY).date == session_date,
+        index=long_e.index,
     )
     fired = (long_e | short_e) & in_session
     out = []
@@ -95,10 +100,12 @@ def _ts(date_str, time_str):
 def test_long_fill_at_trigger():
     # Bar's open is below trigger → fill at trigger price.
     date = "2024-01-02"
-    bars = _bars([
-        (date, "09:45", 99.0, 102.0, 99.0, 101.0),
-        (date, "11:30", 100.0, 100.0, 100.0, 100.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 99.0, 102.0, 99.0, 101.0),
+            (date, "11:30", 100.0, 100.0, 100.0, 100.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, force_e = generate_signals(bars, cands)
 
@@ -111,28 +118,30 @@ def test_long_fill_at_trigger():
 def test_long_fill_gap_at_open():
     # Bar gaps up past trigger → fill at the bar's open (worse).
     date = "2024-01-03"
-    bars = _bars([
-        (date, "09:45", 103.0, 104.0, 102.0, 104.0),
-        (date, "11:30", 104.0, 104.0, 104.0, 104.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 103.0, 104.0, 102.0, 104.0),
+            (date, "11:30", 104.0, 104.0, 104.0, 104.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
     side, fill = _entry_at(long_e, short_e, entry_p, _ts(date, "09:45"))
     assert side == "long"
-    assert fill == 103.0, (
-        f"expected fill 103.0 (max(101, 103) — gap), got {fill}"
-    )
+    assert fill == 103.0, f"expected fill 103.0 (max(101, 103) — gap), got {fill}"
     print("  OK  long fill = max(trigger, open) on gap-up")
 
 
 def test_short_fill_at_trigger():
     # Bar's open is above trigger → fill at trigger price.
     date = "2024-01-04"
-    bars = _bars([
-        (date, "09:45", 95.0, 95.0, 93.0, 94.0),
-        (date, "11:30", 94.0, 94.0, 94.0, 94.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 95.0, 95.0, 93.0, 94.0),
+            (date, "11:30", 94.0, 94.0, 94.0, 94.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
@@ -145,28 +154,30 @@ def test_short_fill_at_trigger():
 def test_short_fill_gap_at_open():
     # Bar gaps down past trigger → fill at the bar's open (worse).
     date = "2024-01-05"
-    bars = _bars([
-        (date, "09:45", 90.0, 94.0, 89.0, 92.0),
-        (date, "11:30", 92.0, 92.0, 92.0, 92.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 90.0, 94.0, 89.0, 92.0),
+            (date, "11:30", 92.0, 92.0, 92.0, 92.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
     side, fill = _entry_at(long_e, short_e, entry_p, _ts(date, "09:45"))
     assert side == "short"
-    assert fill == 90.0, (
-        f"expected fill 90.0 (min(94, 90) — gap), got {fill}"
-    )
+    assert fill == 90.0, f"expected fill 90.0 (min(94, 90) — gap), got {fill}"
     print("  OK  short fill = min(trigger, open) on gap-down")
 
 
 def test_tiebreak_long_when_close_ge_open():
     # Both sides hit. close (96) >= open (95) → long.
     date = "2024-01-08"
-    bars = _bars([
-        (date, "09:45", 95.0, 105.0, 90.0, 96.0),
-        (date, "11:30", 96.0, 96.0, 96.0, 96.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 95.0, 105.0, 90.0, 96.0),
+            (date, "11:30", 96.0, 96.0, 96.0, 96.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
@@ -179,10 +190,12 @@ def test_tiebreak_long_when_close_ge_open():
 def test_tiebreak_short_when_close_lt_open():
     # Both sides hit. close (94) < open (95) → short.
     date = "2024-01-09"
-    bars = _bars([
-        (date, "09:45", 95.0, 105.0, 90.0, 94.0),
-        (date, "11:30", 94.0, 94.0, 94.0, 94.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 95.0, 105.0, 90.0, 94.0),
+            (date, "11:30", 94.0, 94.0, 94.0, 94.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
@@ -196,12 +209,14 @@ def test_break_on_first_hit_skips_no_trigger_bar():
     # 09:45 doesn't trigger (high=100 < 101). 09:46 triggers long.
     # Only the 09:46 bar should fire, and only once.
     date = "2024-01-10"
-    bars = _bars([
-        (date, "09:45", 100.0, 100.0, 99.5, 99.7),
-        (date, "09:46",  99.0, 102.0, 99.0, 101.0),
-        (date, "09:47", 101.0, 103.0, 100.5, 102.5),   # would also trigger
-        (date, "11:30", 102.0, 102.0, 102.0, 102.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 100.0, 100.0, 99.5, 99.7),
+            (date, "09:46", 99.0, 102.0, 99.0, 101.0),
+            (date, "09:47", 101.0, 103.0, 100.5, 102.5),  # would also trigger
+            (date, "11:30", 102.0, 102.0, 102.0, 102.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 
@@ -222,12 +237,14 @@ def test_force_exits_first_bar_at_or_after_1130_only():
     # Per session, force_exits True at the first bar with time >= 11:30,
     # False everywhere else.
     date = "2024-01-11"
-    bars = _bars([
-        (date, "09:45", 99.0, 100.5, 99.0, 100.0),
-        (date, "11:29", 100.0, 100.0, 100.0, 100.0),
-        (date, "11:30", 100.0, 100.0, 100.0, 100.0),
-        (date, "11:31", 100.0, 100.0, 100.0, 100.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 99.0, 100.5, 99.0, 100.0),
+            (date, "11:29", 100.0, 100.0, 100.0, 100.0),
+            (date, "11:30", 100.0, 100.0, 100.0, 100.0),
+            (date, "11:31", 100.0, 100.0, 100.0, 100.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     _, _, _, force_e = generate_signals(bars, cands)
 
@@ -245,10 +262,12 @@ def test_force_exits_first_bar_at_or_after_1130_only():
 def test_no_trigger_no_entry():
     # Tight range that never crosses either trigger.
     date = "2024-01-12"
-    bars = _bars([
-        (date, "09:45", 97.0, 98.0, 96.0, 97.5),
-        (date, "11:30", 97.0, 97.0, 97.0, 97.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 97.0, 98.0, 96.0, 97.5),
+            (date, "11:30", 97.0, 97.0, 97.0, 97.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
     fired = _session_entries(long_e, short_e, entry_p, dt.date(2024, 1, 12))
@@ -263,10 +282,12 @@ def test_multiple_candidates_long_uses_min_triggered():
     # Bar high=110 hits both → trigger = min(101, 106) = 101.
     # Open=100 below trigger → fill = 101.
     date = "2024-01-15"
-    bars = _bars([
-        (date, "09:45", 100.0, 110.0, 100.0, 109.0),
-        (date, "11:30", 109.0, 109.0, 109.0, 109.0),
-    ])
+    bars = _bars(
+        [
+            (date, "09:45", 100.0, 110.0, 100.0, 109.0),
+            (date, "11:30", 109.0, 109.0, 109.0, 109.0),
+        ]
+    )
     cands = _cands([(date, 100.0, 95.0), (date, 105.0, 90.0)])
     long_e, short_e, entry_p, _ = generate_signals(bars, cands)
 

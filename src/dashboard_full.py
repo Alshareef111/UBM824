@@ -19,7 +19,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,33 +32,44 @@ DOCS = PROJECT_ROOT / "docs"
 OUT_PATH = RESULTS / "dashboard_full.html"
 
 # All consumed CSV / artifact paths (panels auto-skip if missing)
-CSV_RISK_AUDIT     = RESULTS / "within200_3020_risk_audit.csv"
-CSV_VALIDATION     = RESULTS / "within200_validation.csv"
-CSV_TP_SL_GRID     = RESULTS / "within200_tp_sl_grid.csv"
-CSV_TIGHT_WF       = RESULTS / "within200_tight_walkforward.csv"
-CSV_ENTRY_GEOM     = RESULTS / "within200_entry_geometry.csv"
-CSV_BE_STOP        = RESULTS / "within200_breakeven_stop.csv"
-CSV_SLIPPAGE       = RESULTS / "within200_slippage.csv"
-CSV_FILL_REALISM   = RESULTS / "within200_fill_realism.csv"
-CSV_PAIRWISE       = RESULTS / "vbt_pairwise_sweep.csv"
-CSV_GATE_PROX      = RESULTS / "vbt_gate_proximity_sweep.csv"
-CSV_REGIME_COV     = RESULTS / "regime_coverage.csv"
-CSV_WIDE_BRACKET   = RESULTS / "wide_bracket_surface.csv"
-CSV_TRADES         = RESULTS / "trades_baseline.csv"
-JSON_CURRENT_BEST  = RESULTS / "current_best.json"
-DEPLOYMENT_PLAN    = DOCS / "DEPLOYMENT_PLAN.md"
-CLUSTER_PNGS       = sorted(RESULTS.glob("cluster_visual_*.png"))
+CSV_RISK_AUDIT = RESULTS / "within200_3020_risk_audit.csv"
+CSV_VALIDATION = RESULTS / "within200_validation.csv"
+CSV_TP_SL_GRID = RESULTS / "within200_tp_sl_grid.csv"
+CSV_TIGHT_WF = RESULTS / "within200_tight_walkforward.csv"
+CSV_ENTRY_GEOM = RESULTS / "within200_entry_geometry.csv"
+CSV_BE_STOP = RESULTS / "within200_breakeven_stop.csv"
+CSV_SLIPPAGE = RESULTS / "within200_slippage.csv"
+CSV_FILL_REALISM = RESULTS / "within200_fill_realism.csv"
+CSV_PAIRWISE = RESULTS / "vbt_pairwise_sweep.csv"
+CSV_GATE_PROX = RESULTS / "vbt_gate_proximity_sweep.csv"
+CSV_REGIME_COV = RESULTS / "regime_coverage.csv"
+CSV_WIDE_BRACKET = RESULTS / "wide_bracket_surface.csv"
+CSV_TRADES = RESULTS / "trades_baseline.csv"
+JSON_CURRENT_BEST = RESULTS / "current_best.json"
+DEPLOYMENT_PLAN = DOCS / "DEPLOYMENT_PLAN.md"
+CLUSTER_PNGS = sorted(RESULTS.glob("cluster_visual_*.png"))
 
 DEFAULT_CHAMPION = {
-    "gate": "within_200", "gap": 7.0, "ms": 2, "lookback": 200,
-    "entry_location": "center", "entry_buffer": 1.0,
-    "stop_pts": 30.0, "target_pts": 20.0, "use_adx": False, "use_be": False,
-    "earliest_entry": "09:45", "latest_entry": "11:29",
-    "slip_pts": 0.5, "commission_rt": 2.0, "cost_model": "A",
+    "gate": "within_200",
+    "gap": 7.0,
+    "ms": 2,
+    "lookback": 200,
+    "entry_location": "center",
+    "entry_buffer": 1.0,
+    "stop_pts": 30.0,
+    "target_pts": 20.0,
+    "use_adx": False,
+    "use_be": False,
+    "earliest_entry": "09:45",
+    "latest_entry": "11:29",
+    "slip_pts": 0.5,
+    "commission_rt": 2.0,
+    "cost_model": "A",
 }
 
 
 # ────────────────────── helpers ────────────────────────────────────────
+
 
 def safe_read_csv(path: Path) -> pd.DataFrame | None:
     if not path.exists():
@@ -135,34 +145,41 @@ def fig_to_div(fig: go.Figure, panel_id: str, height: int = 360) -> str:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="-apple-system, BlinkMacSystemFont, Helvetica, Arial",
-                  size=12, color="#888"),
+        font=dict(
+            family="-apple-system, BlinkMacSystemFont, Helvetica, Arial", size=12, color="#888"
+        ),
         margin=dict(l=55, r=30, t=30, b=40),
         height=height,
-        xaxis=dict(gridcolor="rgba(128,128,128,0.18)",
-                   zerolinecolor="rgba(128,128,128,0.3)",
-                   linecolor="rgba(128,128,128,0.3)"),
-        yaxis=dict(gridcolor="rgba(128,128,128,0.18)",
-                   zerolinecolor="rgba(128,128,128,0.3)",
-                   linecolor="rgba(128,128,128,0.3)"),
+        xaxis=dict(
+            gridcolor="rgba(128,128,128,0.18)",
+            zerolinecolor="rgba(128,128,128,0.3)",
+            linecolor="rgba(128,128,128,0.3)",
+        ),
+        yaxis=dict(
+            gridcolor="rgba(128,128,128,0.18)",
+            zerolinecolor="rgba(128,128,128,0.3)",
+            linecolor="rgba(128,128,128,0.3)",
+        ),
         legend=dict(bgcolor="rgba(0,0,0,0)"),
     )
-    return fig.to_html(full_html=False, include_plotlyjs=False,
-                       div_id=panel_id,
-                       config={"displaylogo": False, "responsive": True})
+    return fig.to_html(
+        full_html=False,
+        include_plotlyjs=False,
+        div_id=panel_id,
+        config={"displaylogo": False, "responsive": True},
+    )
 
 
-def panel_open(letter: str, title: str, source: str, ts: str,
-               note: str | None = None) -> str:
+def panel_open(letter: str, title: str, source: str, ts: str, note: str | None = None) -> str:
     note_html = f'<div class="panel-note">{note}</div>' if note else ""
-    return f'''
+    return f"""
 <section class="panel" id="panel-{letter.lower()}">
   <div class="panel-head">
     <div class="panel-title"><span class="badge">{letter}</span> {title}</div>
     <div class="source">source: <code>{source}</code> · generated {ts}</div>
   </div>
   {note_html}
-'''
+"""
 
 
 def panel_close() -> str:
@@ -171,10 +188,10 @@ def panel_close() -> str:
 
 # ────────────────────── deployment plan parsing ────────────────────────
 
+
 def parse_tripwires(md_text: str) -> pd.DataFrame | None:
     """Find the '## 3. Tripwires' section's markdown table."""
-    m = re.search(r"##\s*3\.\s*Tripwires.*?\n(\|.+?\n)(?=\n\S|\n##|\Z)",
-                  md_text, re.DOTALL)
+    m = re.search(r"##\s*3\.\s*Tripwires.*?\n(\|.+?\n)(?=\n\S|\n##|\Z)", md_text, re.DOTALL)
     if not m:
         return None
     rows = []
@@ -192,8 +209,11 @@ def parse_tripwires(md_text: str) -> pd.DataFrame | None:
 
 def parse_sizing(md_text: str) -> pd.DataFrame | None:
     """Find the suggested-ramp sizing table inside section 1."""
-    m = re.search(r"##\s*1\.\s*Sizing.*?(\|\s*ramp stage.+?\n)(?=\n\S|\n##|\Z)",
-                  md_text, re.DOTALL | re.IGNORECASE)
+    m = re.search(
+        r"##\s*1\.\s*Sizing.*?(\|\s*ramp stage.+?\n)(?=\n\S|\n##|\Z)",
+        md_text,
+        re.DOTALL | re.IGNORECASE,
+    )
     if not m:
         return None
     rows = []
@@ -210,6 +230,7 @@ def parse_sizing(md_text: str) -> pd.DataFrame | None:
 
 # ────────────────────── PANEL A: Headline cards ────────────────────────
 
+
 def panel_A_headline(audit: dict | None, ts: str) -> str | None:
     if audit is None:
         return None
@@ -219,42 +240,47 @@ def panel_A_headline(audit: dict | None, ts: str) -> str | None:
         f"within_200 / g{champ['gap']:.0f} / m{champ['ms']} / "
         f"stop={champ['stop_pts']:.0f} / target={champ['target_pts']:.0f} / "
         f"Model {champ['cost_model']} / slip={champ['slip_pts']} / "
-        f"RT_cost=${champ['commission_rt']}"
+        f"RT_cost=${champ['commission_rt']}",
     )
     fields = [
-        ("trades", audit.get("trades_total"),
-         lambda v: fmt_num(v, 0)),
-        ("net",    audit.get("net_total_$"),
-         lambda v: fmt_money(v, plus=True)),
-        ("max DD", audit.get("max_dd_$"),
-         lambda v: fmt_money(v)),
-        ("max DD %", audit.get("max_dd_pct_of_$50k_init"),
-         lambda v: fmt_pct(v, digits=2, of_unit=False)),
-        ("mean trade", audit.get("trade_pnl_mean_$"),
-         lambda v: fmt_money(v, plus=True)),
-        ("worst loss", audit.get("worst_single_loss_$"),
-         lambda v: fmt_money(v)),
-        ("worst streak", audit.get("worst_losing_trade_streak"),
-         lambda v: fmt_num(v, 0)),
-        ("% pos months", audit.get("pct_positive_months"),
-         lambda v: fmt_pct(v, digits=1, of_unit=False)),
+        ("trades", audit.get("trades_total"), lambda v: fmt_num(v, 0)),
+        ("net", audit.get("net_total_$"), lambda v: fmt_money(v, plus=True)),
+        ("max DD", audit.get("max_dd_$"), lambda v: fmt_money(v)),
+        (
+            "max DD %",
+            audit.get("max_dd_pct_of_$50k_init"),
+            lambda v: fmt_pct(v, digits=2, of_unit=False),
+        ),
+        ("mean trade", audit.get("trade_pnl_mean_$"), lambda v: fmt_money(v, plus=True)),
+        ("worst loss", audit.get("worst_single_loss_$"), lambda v: fmt_money(v)),
+        ("worst streak", audit.get("worst_losing_trade_streak"), lambda v: fmt_num(v, 0)),
+        (
+            "% pos months",
+            audit.get("pct_positive_months"),
+            lambda v: fmt_pct(v, digits=1, of_unit=False),
+        ),
     ]
     cards = "".join(
-        f'<div class="card"><div class="label">{label}</div>'
-        f'<div class="value">{fmt(v)}</div></div>'
+        f'<div class="card"><div class="label">{label}</div><div class="value">{fmt(v)}</div></div>'
         for label, v, fmt in fields
     )
-    head = panel_open("A", "Locked config — headline",
-                      "within200_3020_risk_audit.csv", ts,
-                      note=f"<code>{cfg_line}</code>")
+    head = panel_open(
+        "A",
+        "Locked config — headline",
+        "within200_3020_risk_audit.csv",
+        ts,
+        note=f"<code>{cfg_line}</code>",
+    )
     return head + f'<div class="cards">{cards}</div>' + panel_close()
 
 
 # ────────────────────── PANEL B: Config evolution ──────────────────────
 
+
 def panel_B_evolution(df_gate, df_val, audit, ts):
     if df_gate is None or df_val is None or audit is None:
         return None
+
     # Stage 1: C+ADX+40/40 — from within200_validation.csv (gate=inside_OR / full)
     # Stage 2: within_200/40-40 — within200_validation.csv (gate=within_200 / full)
     # Stage 3: locked (within_200/30-20) — from risk audit
@@ -272,46 +298,65 @@ def panel_B_evolution(df_gate, df_val, audit, ts):
     stages = [
         ("inside_OR  ·  40/40", stage1, "stage 1"),
         ("within_200 ·  40/40", stage2, "stage 2"),
-        ("within_200 ·  30/20", {
-            "n_trades": audit.get("trades_total"),
-            "WR":       audit.get("win_rate"),  # may be missing
-            "net":      audit.get("net_total_$"),
-            "PF":       audit.get("profit_factor"),  # missing in risk audit
-            "max_dd":   audit.get("max_dd_$"),
-            "Sharpe":   audit.get("sharpe_approx"),  # missing
-         }, "locked"),
+        (
+            "within_200 ·  30/20",
+            {
+                "n_trades": audit.get("trades_total"),
+                "WR": audit.get("win_rate"),  # may be missing
+                "net": audit.get("net_total_$"),
+                "PF": audit.get("profit_factor"),  # missing in risk audit
+                "max_dd": audit.get("max_dd_$"),
+                "Sharpe": audit.get("sharpe_approx"),  # missing
+            },
+            "locked",
+        ),
     ]
     cards = []
     for label, row, tag in stages:
-        rows_html = "".join([
-            f'<tr><td>net</td><td class="num">{fmt_money(row.get("net"))}</td></tr>',
-            f'<tr><td>PF</td><td class="num">{fmt_num(row.get("PF"), 3)}</td></tr>',
-            f'<tr><td>max DD</td><td class="num">{fmt_money(row.get("max_dd"))}</td></tr>',
-            f'<tr><td>trades</td><td class="num">{fmt_num(row.get("n_trades"), 0)}</td></tr>',
-        ])
+        rows_html = "".join(
+            [
+                f'<tr><td>net</td><td class="num">{fmt_money(row.get("net"))}</td></tr>',
+                f'<tr><td>PF</td><td class="num">{fmt_num(row.get("PF"), 3)}</td></tr>',
+                f'<tr><td>max DD</td><td class="num">{fmt_money(row.get("max_dd"))}</td></tr>',
+                f'<tr><td>trades</td><td class="num">{fmt_num(row.get("n_trades"), 0)}</td></tr>',
+            ]
+        )
         cards.append(
             f'<div class="card-wide"><div class="card-tag">{tag}</div>'
             f'<div class="card-h">{label}</div><table class="mini">{rows_html}</table></div>'
         )
 
-    head = panel_open("B", "Config evolution",
-                      "within200_validation.csv + within200_3020_risk_audit.csv",
-                      ts, note="three milestones; full-period metrics")
+    head = panel_open(
+        "B",
+        "Config evolution",
+        "within200_validation.csv + within200_3020_risk_audit.csv",
+        ts,
+        note="three milestones; full-period metrics",
+    )
     return head + f'<div class="grid-3">{"".join(cards)}</div>' + panel_close()
 
 
 # ────────────────────── PANEL C: Decision trail ────────────────────────
 
 DECISIONS = [
-    ("Gate", "inside_OR (cluster center inside OR)",
-     "within_200 (within 200 pts of 09:45 price)",
-     "inside_OR discarded positive-EV setups; within_200 lifts PF + holds train→test→holdout."),
-    ("ADX(30, 8)", "ON — needed to densify entries under inside_OR",
-     "OFF — redundant under within_200; hurt holdout",
-     "Simpler config = fewer params, less overfit surface."),
-    ("Target", "40 pts (inherited, never swept)",
-     "20 pts (TP/SL surface dominator)",
-     "Tight targets dominate the TP/SL surface; 30/20 over 40/20 for better R:R / lower BE WR."),
+    (
+        "Gate",
+        "inside_OR (cluster center inside OR)",
+        "within_200 (within 200 pts of 09:45 price)",
+        "inside_OR discarded positive-EV setups; within_200 lifts PF + holds train→test→holdout.",
+    ),
+    (
+        "ADX(30, 8)",
+        "ON — needed to densify entries under inside_OR",
+        "OFF — redundant under within_200; hurt holdout",
+        "Simpler config = fewer params, less overfit surface.",
+    ),
+    (
+        "Target",
+        "40 pts (inherited, never swept)",
+        "20 pts (TP/SL surface dominator)",
+        "Tight targets dominate the TP/SL surface; 30/20 over 40/20 for better R:R / lower BE WR.",
+    ),
 ]
 
 
@@ -325,16 +370,22 @@ def panel_C_decisions(ts):
             f'<td class="dec-after">{after}</td>'
             f'<td class="dec-why">{why}</td></tr>'
         )
-    head = panel_open("C", "Key decisions trail",
-                      "within200_validation.csv, within200_tp_sl_grid.csv, within200_adx_grid.csv",
-                      ts)
-    return (head + '<table class="decisions">'
-            '<thead><tr><th>decision</th><th>before</th><th></th>'
-            '<th>after</th><th>why</th></tr></thead>'
-            f'<tbody>{"".join(rows)}</tbody></table>' + panel_close())
+    head = panel_open(
+        "C",
+        "Key decisions trail",
+        "within200_validation.csv, within200_tp_sl_grid.csv, within200_adx_grid.csv",
+        ts,
+    )
+    return (
+        head + '<table class="decisions">'
+        "<thead><tr><th>decision</th><th>before</th><th></th>"
+        "<th>after</th><th>why</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>" + panel_close()
+    )
 
 
 # ────────────────────── PANEL D: Gate analysis ─────────────────────────
+
 
 def panel_D_gate(df_gate, ts):
     if df_gate is None:
@@ -347,21 +398,31 @@ def panel_D_gate(df_gate, ts):
     sub = sub.dropna(subset=["o"]).sort_values("o")
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=sub["gate"], y=sub["net_dollars"], name="net $",
-        marker_color="#5b8def", yaxis="y",
-        hovertemplate="<b>%{x}</b><br>net = %{y:$,.0f}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=sub["gate"], y=sub["profit_factor"], name="PF",
-        mode="lines+markers", yaxis="y2",
-        line=dict(color="#d97706", width=2.5), marker=dict(size=10),
-        hovertemplate="<b>%{x}</b><br>PF = %{y:.3f}<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Bar(
+            x=sub["gate"],
+            y=sub["net_dollars"],
+            name="net $",
+            marker_color="#5b8def",
+            yaxis="y",
+            hovertemplate="<b>%{x}</b><br>net = %{y:$,.0f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=sub["gate"],
+            y=sub["profit_factor"],
+            name="PF",
+            mode="lines+markers",
+            yaxis="y2",
+            line=dict(color="#d97706", width=2.5),
+            marker=dict(size=10),
+            hovertemplate="<b>%{x}</b><br>PF = %{y:.3f}<extra></extra>",
+        )
+    )
     # second-axis right
     fig.update_layout(
-        yaxis=dict(title="net $", tickformat="$,.0f",
-                   gridcolor="rgba(128,128,128,0.18)"),
+        yaxis=dict(title="net $", tickformat="$,.0f", gridcolor="rgba(128,128,128,0.18)"),
         yaxis2=dict(title="PF", overlaying="y", side="right", showgrid=False),
         legend=dict(orientation="h", x=0, y=1.10),
     )
@@ -376,17 +437,16 @@ def panel_D_gate(df_gate, ts):
         restr_html = (
             '<div class="side-table"><div class="side-h">restrictiveness</div>'
             '<table class="mini"><thead><tr>'
-            '<th>gate</th><th>n cand.</th><th>n trades</th>'
-            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+            "<th>gate</th><th>n cand.</th><th>n trades</th>"
+            f"</tr></thead><tbody>{rows}</tbody></table></div>"
         )
 
-    head = panel_open("D", "Gate sweet-spot (gap=7 · ms=2)",
-                      "vbt_gate_proximity_sweep.csv", ts)
-    return (head + '<div class="row-2">'
-            f'{fig_to_div(fig, "fig-D")}{restr_html}</div>' + panel_close())
+    head = panel_open("D", "Gate sweet-spot (gap=7 · ms=2)", "vbt_gate_proximity_sweep.csv", ts)
+    return head + f'<div class="row-2">{fig_to_div(fig, "fig-D")}{restr_html}</div>' + panel_close()
 
 
 # ────────────────────── PANEL E: TP/SL surface ─────────────────────────
+
 
 def panel_E_tpsl(df, ts, champ):
     if df is None:
@@ -396,30 +456,48 @@ def panel_E_tpsl(df, ts, champ):
     df["target"] = df["target"].astype(int)
     # PF heatmap: stop on Y, target on X
     pivot = df.pivot(index="stop", columns="target", values="pf").sort_index()
-    fig = go.Figure(data=go.Heatmap(
-        z=pivot.values, x=pivot.columns, y=pivot.index,
-        colorscale="RdYlGn", zmid=1.0,
-        colorbar=dict(title="PF"),
-        hovertemplate="stop=%{y} / target=%{x}<br>PF=%{z:.3f}<extra></extra>",
-    ))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=pivot.values,
+            x=pivot.columns,
+            y=pivot.index,
+            colorscale="RdYlGn",
+            zmid=1.0,
+            colorbar=dict(title="PF"),
+            hovertemplate="stop=%{y} / target=%{x}<br>PF=%{z:.3f}<extra></extra>",
+        )
+    )
     # mark the locked cell
-    sx = int(champ["target_pts"]); sy = int(champ["stop_pts"])
+    sx = int(champ["target_pts"])
+    sy = int(champ["stop_pts"])
     if sx in pivot.columns and sy in pivot.index:
-        fig.add_annotation(x=sx, y=sy, text="★ 30/20",
-                           showarrow=False, font=dict(color="#111", size=13),
-                           bgcolor="rgba(255,255,255,0.85)",
-                           bordercolor="#111", borderwidth=1)
+        fig.add_annotation(
+            x=sx,
+            y=sy,
+            text="★ 30/20",
+            showarrow=False,
+            font=dict(color="#111", size=13),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#111",
+            borderwidth=1,
+        )
     fig.update_layout(
-        xaxis_title="target (pts)", yaxis_title="stop (pts)",
+        xaxis_title="target (pts)",
+        yaxis_title="stop (pts)",
         yaxis=dict(autorange="reversed"),
     )
-    head = panel_open("E", "TP/SL surface (PF heatmap)",
-                      "within200_tp_sl_grid.csv", ts,
-                      note="★ marks the locked 30/20 cell")
+    head = panel_open(
+        "E",
+        "TP/SL surface (PF heatmap)",
+        "within200_tp_sl_grid.csv",
+        ts,
+        note="★ marks the locked 30/20 cell",
+    )
     return head + fig_to_div(fig, "fig-E", height=400) + panel_close()
 
 
 # ────────────────────── PANEL F: Validation ────────────────────────────
+
 
 def panel_F_validation(df_tight, df_slip, df_fill, ts):
     if df_tight is None:
@@ -430,54 +508,61 @@ def panel_F_validation(df_tight, df_slip, df_fill, ts):
     if sub.empty:
         return None
     sub["period"] = pd.Categorical(sub["period"], categories=splits, ordered=True)
-    color_map = {"40/40": "#1f77b4", "40/20": "#2ca02c", "30/20": "#d62728",
-                 "20/20": "#9467bd"}
+    color_map = {"40/40": "#1f77b4", "40/20": "#2ca02c", "30/20": "#d62728", "20/20": "#9467bd"}
     fig = go.Figure()
     for cell, g in sub.groupby("cell"):
         g = g.sort_values("period")
-        fig.add_trace(go.Scatter(
-            x=[str(p) for p in g["period"]], y=g["pf"],
-            mode="lines+markers", name=cell,
-            line=dict(color=color_map.get(cell, "#666"), width=2.5),
-            marker=dict(size=10),
-            hovertemplate=f"<b>{cell}</b><br>%{{x}}: PF = %{{y:.3f}}<extra></extra>",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[str(p) for p in g["period"]],
+                y=g["pf"],
+                mode="lines+markers",
+                name=cell,
+                line=dict(color=color_map.get(cell, "#666"), width=2.5),
+                marker=dict(size=10),
+                hovertemplate=f"<b>{cell}</b><br>%{{x}}: PF = %{{y:.3f}}<extra></extra>",
+            )
+        )
     fig.add_hline(y=1.0, line_dash="dot", line_color="rgba(128,128,128,0.5)")
-    fig.update_layout(yaxis_title="PF", xaxis_title=None,
-                      legend=dict(orientation="h", x=0, y=1.1))
+    fig.update_layout(yaxis_title="PF", xaxis_title=None, legend=dict(orientation="h", x=0, y=1.1))
 
     # Per-year PF for the 30/20 cell
     yearly_html = ""
-    yearly = df_tight[(df_tight["cell"] == "30/20") &
-                      df_tight["period"].astype(str).str.match(r"^\d{4}$")]
+    yearly = df_tight[
+        (df_tight["cell"] == "30/20") & df_tight["period"].astype(str).str.match(r"^\d{4}$")
+    ]
     if not yearly.empty:
-        yfig = go.Figure(go.Bar(
-            x=yearly["period"].astype(str), y=yearly["pf"],
-            marker_color=["#2ca02c" if v >= 1.0 else "#d62728"
-                          for v in yearly["pf"]],
-            hovertemplate="%{x}: PF=%{y:.3f}<extra></extra>",
-        ))
-        yfig.add_hline(y=1.0, line_dash="dot",
-                       line_color="rgba(128,128,128,0.5)")
+        yfig = go.Figure(
+            go.Bar(
+                x=yearly["period"].astype(str),
+                y=yearly["pf"],
+                marker_color=["#2ca02c" if v >= 1.0 else "#d62728" for v in yearly["pf"]],
+                hovertemplate="%{x}: PF=%{y:.3f}<extra></extra>",
+            )
+        )
+        yfig.add_hline(y=1.0, line_dash="dot", line_color="rgba(128,128,128,0.5)")
         yfig.update_layout(yaxis_title="PF (per year)")
         yearly_html = fig_to_div(yfig, "fig-F-yearly", height=300)
 
     # Slippage decay summary
     slip_html = ""
     if df_slip is not None:
-        s = df_slip[(df_slip["stop"] == 30) & (df_slip["target"] == 20) &
-                    (df_slip["model"] == "A")].copy()
+        s = df_slip[
+            (df_slip["stop"] == 30) & (df_slip["target"] == 20) & (df_slip["model"] == "A")
+        ].copy()
         if not s.empty:
-            sfig = go.Figure(go.Scatter(
-                x=s["slip_pts_per_side"], y=s["pf"],
-                mode="lines+markers", line=dict(color="#5b8def", width=2.5),
-                marker=dict(size=8),
-                hovertemplate="slip=%{x}pt/side<br>PF=%{y:.3f}<extra></extra>",
-            ))
-            sfig.add_hline(y=1.0, line_dash="dot",
-                           line_color="rgba(128,128,128,0.5)")
-            sfig.update_layout(yaxis_title="PF",
-                               xaxis_title="slip pts / side (Model A)")
+            sfig = go.Figure(
+                go.Scatter(
+                    x=s["slip_pts_per_side"],
+                    y=s["pf"],
+                    mode="lines+markers",
+                    line=dict(color="#5b8def", width=2.5),
+                    marker=dict(size=8),
+                    hovertemplate="slip=%{x}pt/side<br>PF=%{y:.3f}<extra></extra>",
+                )
+            )
+            sfig.add_hline(y=1.0, line_dash="dot", line_color="rgba(128,128,128,0.5)")
+            sfig.update_layout(yaxis_title="PF", xaxis_title="slip pts / side (Model A)")
             slip_html = fig_to_div(sfig, "fig-F-slip", height=300)
 
     # Fill realism row(s) for 30/20
@@ -495,23 +580,29 @@ def panel_F_validation(df_tight, df_slip, df_fill, ts):
                 f'<tr><td>PF spread</td><td class="num">{r["pf_spread"]:.3f}</td></tr>'
                 f'<tr><td>% target on entry-bar</td><td class="num">{r["pct_target_on_entry_bar"]:.1f}%</td></tr>'
                 f'<tr><td>% ambiguous bars</td><td class="num">{r["pct_ambiguous"]:.2f}%</td></tr>'
-                '</table></div>'
+                "</table></div>"
             )
 
-    head = panel_open("F", "Validation — walk-forward + slippage + fills",
-                      "within200_tight_walkforward.csv, within200_slippage.csv, within200_fill_realism.csv",
-                      ts)
-    body = (f'<div class="subhead">train → test → holdout PF (all tight cells)</div>'
-            f'{fig_to_div(fig, "fig-F-wf")}'
-            f'<div class="grid-2">'
-            f'  <div><div class="subhead">per-year PF (30/20)</div>{yearly_html}</div>'
-            f'  <div><div class="subhead">slippage decay (30/20)</div>{slip_html}</div>'
-            f'</div>'
-            f'{fill_html}')
+    head = panel_open(
+        "F",
+        "Validation — walk-forward + slippage + fills",
+        "within200_tight_walkforward.csv, within200_slippage.csv, within200_fill_realism.csv",
+        ts,
+    )
+    body = (
+        f'<div class="subhead">train → test → holdout PF (all tight cells)</div>'
+        f"{fig_to_div(fig, 'fig-F-wf')}"
+        f'<div class="grid-2">'
+        f'  <div><div class="subhead">per-year PF (30/20)</div>{yearly_html}</div>'
+        f'  <div><div class="subhead">slippage decay (30/20)</div>{slip_html}</div>'
+        f"</div>"
+        f"{fill_html}"
+    )
     return head + body + panel_close()
 
 
 # ────────────────────── PANEL G: Falsifications ────────────────────────
+
 
 def panel_G_falsifications(df_geom, df_be, df_wide, ts):
     blocks = []
@@ -520,71 +611,100 @@ def panel_G_falsifications(df_geom, df_be, df_wide, ts):
     if df_geom is not None:
         g = df_geom[df_geom["param"] == "entry_offset"]
         if not g.empty:
-            fig = go.Figure(go.Scatter(
-                x=g["value"].astype(float), y=g["pf"],
-                mode="lines+markers", line=dict(color="#5b8def", width=2.5),
-                marker=dict(size=8),
-                hovertemplate="offset=%{x}<br>PF=%{y:.3f}<extra></extra>",
-            ))
+            fig = go.Figure(
+                go.Scatter(
+                    x=g["value"].astype(float),
+                    y=g["pf"],
+                    mode="lines+markers",
+                    line=dict(color="#5b8def", width=2.5),
+                    marker=dict(size=8),
+                    hovertemplate="offset=%{x}<br>PF=%{y:.3f}<extra></extra>",
+                )
+            )
             fig.update_layout(
-                yaxis=dict(title="PF",
-                           range=[max(0.9, float(g["pf"].min()) - 0.05),
-                                  float(g["pf"].max()) + 0.05]),
+                yaxis=dict(
+                    title="PF",
+                    range=[max(0.9, float(g["pf"].min()) - 0.05), float(g["pf"].max()) + 0.05],
+                ),
                 xaxis_title="entry offset (pts)",
             )
-            blocks.append(('entry geometry — inert',
-                           "within200_entry_geometry.csv",
-                           fig_to_div(fig, "fig-G-geom", height=280)))
+            blocks.append(
+                (
+                    "entry geometry — inert",
+                    "within200_entry_geometry.csv",
+                    fig_to_div(fig, "fig-G-geom", height=280),
+                )
+            )
 
     # BE stop — bar chart of PF vs BE band
     if df_be is not None:
         b = df_be.copy()
         b["B_str"] = b["B"].apply(lambda v: "none" if v == "none" else str(v))
         fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=b["B_str"], y=b["pf"],
-            marker_color="#5b8def", name="PF",
-            yaxis="y",
-        ))
-        fig.add_trace(go.Scatter(
-            x=b["B_str"], y=b["wr"],
-            mode="lines+markers", name="WR",
-            yaxis="y2",
-            line=dict(color="#d97706", width=2.5), marker=dict(size=8),
-            hovertemplate="B=%{x}<br>WR=%{y:.1%}<extra></extra>",
-        ))
+        fig.add_trace(
+            go.Bar(
+                x=b["B_str"],
+                y=b["pf"],
+                marker_color="#5b8def",
+                name="PF",
+                yaxis="y",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=b["B_str"],
+                y=b["wr"],
+                mode="lines+markers",
+                name="WR",
+                yaxis="y2",
+                line=dict(color="#d97706", width=2.5),
+                marker=dict(size=8),
+                hovertemplate="B=%{x}<br>WR=%{y:.1%}<extra></extra>",
+            )
+        )
         fig.update_layout(
             yaxis=dict(title="PF"),
-            yaxis2=dict(title="WR", overlaying="y", side="right",
-                        tickformat=".0%", showgrid=False),
+            yaxis2=dict(title="WR", overlaying="y", side="right", tickformat=".0%", showgrid=False),
             xaxis_title="BE stop band B",
             legend=dict(orientation="h", x=0, y=1.10),
         )
-        blocks.append(('breakeven stop — destructive',
-                       "within200_breakeven_stop.csv",
-                       fig_to_div(fig, "fig-G-be", height=300)))
+        blocks.append(
+            (
+                "breakeven stop — destructive",
+                "within200_breakeven_stop.csv",
+                fig_to_div(fig, "fig-G-be", height=300),
+            )
+        )
 
     # Wide brackets — table + PF bar
     if df_wide is not None:
         w = df_wide.copy().sort_values("stop")
-        fig = go.Figure(go.Bar(
-            x=w["label"], y=w["profit_factor"],
-            marker_color=["#2ca02c" if v >= 1.5 else "#5b8def"
-                          for v in w["profit_factor"]],
-            hovertemplate="%{x}<br>PF=%{y:.3f}<extra></extra>",
-        ))
-        fig.add_hline(y=1.0, line_dash="dot",
-                      line_color="rgba(128,128,128,0.5)")
+        fig = go.Figure(
+            go.Bar(
+                x=w["label"],
+                y=w["profit_factor"],
+                marker_color=["#2ca02c" if v >= 1.5 else "#5b8def" for v in w["profit_factor"]],
+                hovertemplate="%{x}<br>PF=%{y:.3f}<extra></extra>",
+            )
+        )
+        fig.add_hline(y=1.0, line_dash="dot", line_color="rgba(128,128,128,0.5)")
         fig.update_layout(yaxis_title="PF")
-        blocks.append(('wide brackets — PF craters',
-                       "wide_bracket_surface.csv",
-                       fig_to_div(fig, "fig-G-wide", height=300)))
+        blocks.append(
+            (
+                "wide brackets — PF craters",
+                "wide_bracket_surface.csv",
+                fig_to_div(fig, "fig-G-wide", height=300),
+            )
+        )
 
     if not blocks:
         return None
-    head = panel_open("G", "Falsification — what was tested & rejected",
-                      "entry_geometry / breakeven_stop / wide_bracket_surface",
-                      ts)
+    head = panel_open(
+        "G",
+        "Falsification — what was tested & rejected",
+        "entry_geometry / breakeven_stop / wide_bracket_surface",
+        ts,
+    )
     cells = "".join(
         f'<div class="falsif-cell"><div class="falsif-title">{t}</div>'
         f'<div class="falsif-src">source: <code>{s}</code></div>{h}</div>'
@@ -595,22 +715,25 @@ def panel_G_falsifications(df_geom, df_be, df_wide, ts):
 
 # ────────────────────── PANEL H: Risk ──────────────────────────────────
 
+
 def panel_H_risk(audit, df_trades, ts):
     if audit is None:
         return None
     # KPIs from audit
-    rows_html = "".join([
-        f'<tr><td>max DD</td><td class="num">{fmt_money(audit.get("max_dd_$"))}</td></tr>',
-        f'<tr><td>max DD %</td><td class="num">{fmt_pct(audit.get("max_dd_pct_of_$50k_init"), 2, of_unit=False)}</td></tr>',
-        f'<tr><td>worst rolling 3m</td><td class="num">{fmt_money(audit.get("worst_rolling_3m_$"))}</td></tr>',
-        f'<tr><td>% time underwater</td><td class="num">{fmt_pct(audit.get("pct_calendar_underwater"), 1, of_unit=False)}</td></tr>',
-        f'<tr><td>worst losing streak</td><td class="num">{audit.get("worst_losing_trade_streak")} ({fmt_money(audit.get("worst_losing_trade_streak_$"))})</td></tr>',
-        f'<tr><td>worst single loss</td><td class="num">{fmt_money(audit.get("worst_single_loss_$"))}</td></tr>',
-        f'<tr><td>pnl skew</td><td class="num">{fmt_num(audit.get("trade_pnl_skew"), 3)}</td></tr>',
-        f'<tr><td>excess kurt</td><td class="num">{fmt_num(audit.get("trade_pnl_excess_kurt"), 3)}</td></tr>',
-        f'<tr><td>% positive months</td><td class="num">{fmt_pct(audit.get("pct_positive_months"), 1, of_unit=False)}</td></tr>',
-        f'<tr><td>best / worst month</td><td class="num">{audit.get("best_month")} / {audit.get("worst_month")}</td></tr>',
-    ])
+    rows_html = "".join(
+        [
+            f'<tr><td>max DD</td><td class="num">{fmt_money(audit.get("max_dd_$"))}</td></tr>',
+            f'<tr><td>max DD %</td><td class="num">{fmt_pct(audit.get("max_dd_pct_of_$50k_init"), 2, of_unit=False)}</td></tr>',
+            f'<tr><td>worst rolling 3m</td><td class="num">{fmt_money(audit.get("worst_rolling_3m_$"))}</td></tr>',
+            f'<tr><td>% time underwater</td><td class="num">{fmt_pct(audit.get("pct_calendar_underwater"), 1, of_unit=False)}</td></tr>',
+            f'<tr><td>worst losing streak</td><td class="num">{audit.get("worst_losing_trade_streak")} ({fmt_money(audit.get("worst_losing_trade_streak_$"))})</td></tr>',
+            f'<tr><td>worst single loss</td><td class="num">{fmt_money(audit.get("worst_single_loss_$"))}</td></tr>',
+            f'<tr><td>pnl skew</td><td class="num">{fmt_num(audit.get("trade_pnl_skew"), 3)}</td></tr>',
+            f'<tr><td>excess kurt</td><td class="num">{fmt_num(audit.get("trade_pnl_excess_kurt"), 3)}</td></tr>',
+            f'<tr><td>% positive months</td><td class="num">{fmt_pct(audit.get("pct_positive_months"), 1, of_unit=False)}</td></tr>',
+            f'<tr><td>best / worst month</td><td class="num">{audit.get("best_month")} / {audit.get("worst_month")}</td></tr>',
+        ]
+    )
     audit_table = (
         '<div class="side-table"><div class="side-h">risk KPIs</div>'
         f'<table class="mini">{rows_html}</table></div>'
@@ -624,25 +747,33 @@ def panel_H_risk(audit, df_trades, ts):
         df["month"] = df["exit_ts"].dt.to_period("M").astype(str)
         monthly = df.groupby("month")["pnl_dollars"].sum().reset_index()
         if not monthly.empty:
-            fig = go.Figure(go.Bar(
-                x=monthly["month"], y=monthly["pnl_dollars"],
-                marker_color=["#2ca02c" if v >= 0 else "#d62728"
-                              for v in monthly["pnl_dollars"]],
-                hovertemplate="%{x}: %{y:$,.0f}<extra></extra>",
-            ))
-            fig.update_layout(yaxis_title="monthly P&L ($)",
-                              xaxis_title=None)
-            monthly_html = (f'<div><div class="subhead">monthly P&L distribution</div>'
-                            f'{fig_to_div(fig, "fig-H-monthly", height=320)}</div>')
+            fig = go.Figure(
+                go.Bar(
+                    x=monthly["month"],
+                    y=monthly["pnl_dollars"],
+                    marker_color=[
+                        "#2ca02c" if v >= 0 else "#d62728" for v in monthly["pnl_dollars"]
+                    ],
+                    hovertemplate="%{x}: %{y:$,.0f}<extra></extra>",
+                )
+            )
+            fig.update_layout(yaxis_title="monthly P&L ($)", xaxis_title=None)
+            monthly_html = (
+                f'<div><div class="subhead">monthly P&L distribution</div>'
+                f"{fig_to_div(fig, 'fig-H-monthly', height=320)}</div>"
+            )
 
-    head = panel_open("H", "Risk — drawdown, streaks, monthly distribution",
-                      "within200_3020_risk_audit.csv + trades_baseline.csv",
-                      ts)
-    return head + ('<div class="row-2">'
-                   f'{audit_table}{monthly_html}</div>') + panel_close()
+    head = panel_open(
+        "H",
+        "Risk — drawdown, streaks, monthly distribution",
+        "within200_3020_risk_audit.csv + trades_baseline.csv",
+        ts,
+    )
+    return head + (f'<div class="row-2">{audit_table}{monthly_html}</div>') + panel_close()
 
 
 # ────────────────────── PANEL I: Regime / dark streaks ─────────────────
+
 
 def panel_I_regime(df_reg, audit, ts):
     if df_reg is None and audit is None:
@@ -652,37 +783,46 @@ def panel_I_regime(df_reg, audit, ts):
     if df_reg is not None and "regime" in df_reg.columns:
         rd = df_reg["regime"].value_counts().reset_index()
         rd.columns = ["regime", "n_sessions"]
-        fig = go.Figure(go.Bar(
-            x=rd["regime"], y=rd["n_sessions"],
-            marker_color="#5b8def",
-            hovertemplate="%{x}: %{y} sessions<extra></extra>",
-        ))
-        fig.update_layout(yaxis_title="n sessions",
-                          xaxis_title="regime")
-        blocks.append(('regime distribution',
-                       fig_to_div(fig, "fig-I-regime", height=280)))
+        fig = go.Figure(
+            go.Bar(
+                x=rd["regime"],
+                y=rd["n_sessions"],
+                marker_color="#5b8def",
+                hovertemplate="%{x}: %{y} sessions<extra></extra>",
+            )
+        )
+        fig.update_layout(yaxis_title="n sessions", xaxis_title="regime")
+        blocks.append(("regime distribution", fig_to_div(fig, "fig-I-regime", height=280)))
 
     # Dark-streak summary from audit
     if audit is not None:
-        rows_html = "".join([
-            f'<tr><td>longest dark streak</td><td class="num">{audit.get("dark_streak_longest_sessions")} ({audit.get("dark_streak_longest_dates")})</td></tr>',
-            f'<tr><td>current dark streak</td><td class="num">{audit.get("dark_streak_current_sessions")} ({audit.get("dark_streak_current_dates")})</td></tr>',
-            f'<tr><td>total dark streaks</td><td class="num">{audit.get("dark_streaks_count")}</td></tr>',
-            f'<tr><td>mean dark streak</td><td class="num">{fmt_num(audit.get("dark_streak_mean_length"), 2)}</td></tr>',
-            f'<tr><td>p95 dark streak</td><td class="num">{fmt_num(audit.get("dark_streak_p95_length"), 1)}</td></tr>',
-        ])
-        ds_table = ('<div class="side-table"><div class="side-h">dark streaks</div>'
-                    f'<table class="mini">{rows_html}</table></div>')
-        blocks.append(('', ds_table))
+        rows_html = "".join(
+            [
+                f'<tr><td>longest dark streak</td><td class="num">{audit.get("dark_streak_longest_sessions")} ({audit.get("dark_streak_longest_dates")})</td></tr>',
+                f'<tr><td>current dark streak</td><td class="num">{audit.get("dark_streak_current_sessions")} ({audit.get("dark_streak_current_dates")})</td></tr>',
+                f'<tr><td>total dark streaks</td><td class="num">{audit.get("dark_streaks_count")}</td></tr>',
+                f'<tr><td>mean dark streak</td><td class="num">{fmt_num(audit.get("dark_streak_mean_length"), 2)}</td></tr>',
+                f'<tr><td>p95 dark streak</td><td class="num">{fmt_num(audit.get("dark_streak_p95_length"), 1)}</td></tr>',
+            ]
+        )
+        ds_table = (
+            '<div class="side-table"><div class="side-h">dark streaks</div>'
+            f'<table class="mini">{rows_html}</table></div>'
+        )
+        blocks.append(("", ds_table))
 
-    head = panel_open("I", "Regime coverage & dark streaks",
-                      "regime_coverage.csv + within200_3020_risk_audit.csv",
-                      ts)
+    head = panel_open(
+        "I",
+        "Regime coverage & dark streaks",
+        "regime_coverage.csv + within200_3020_risk_audit.csv",
+        ts,
+    )
     inner = '<div class="row-2">' + "".join(b for _, b in blocks) + "</div>"
     return head + inner + panel_close()
 
 
 # ────────────────────── PANEL J: Deployment ────────────────────────────
+
 
 def panel_J_deployment(ts):
     if not DEPLOYMENT_PLAN.exists():
@@ -693,8 +833,7 @@ def panel_J_deployment(ts):
     blocks = []
     if sizing is not None:
         rows = "".join(
-            "<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>"
-            for r in sizing.values.tolist()
+            "<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in sizing.values.tolist()
         )
         headers = "".join(f"<th>{h}</th>" for h in sizing.columns)
         blocks.append(
@@ -713,13 +852,18 @@ def panel_J_deployment(ts):
         )
     if not blocks:
         return None
-    head = panel_open("J", "Deployment — sizing & tripwires",
-                      "docs/DEPLOYMENT_PLAN.md", ts,
-                      note="parsed from the deployment plan; the document is the source of truth")
+    head = panel_open(
+        "J",
+        "Deployment — sizing & tripwires",
+        "docs/DEPLOYMENT_PLAN.md",
+        ts,
+        note="parsed from the deployment plan; the document is the source of truth",
+    )
     return head + "".join(blocks) + panel_close()
 
 
 # ────────────────────── PANEL K: Equity curve ──────────────────────────
+
 
 def panel_K_equity(df_trades, audit, ts):
     if df_trades is None or "pnl_dollars" not in df_trades.columns:
@@ -734,32 +878,50 @@ def panel_K_equity(df_trades, audit, ts):
     df["dd"] = df["cum"] - df["peak"]
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df["exit_ts"], y=df["cum"], name="cumulative net $",
-        mode="lines", line=dict(color="#5b8def", width=2),
-        hovertemplate="%{x|%Y-%m-%d}<br>cum = %{y:$,.0f}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=df["exit_ts"], y=df["dd"], name="drawdown $",
-        mode="lines", line=dict(color="#d97706", width=1),
-        fill="tozeroy", fillcolor="rgba(217,119,6,0.18)",
-        yaxis="y2",
-        hovertemplate="%{x|%Y-%m-%d}<br>dd = %{y:$,.0f}<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=df["exit_ts"],
+            y=df["cum"],
+            name="cumulative net $",
+            mode="lines",
+            line=dict(color="#5b8def", width=2),
+            hovertemplate="%{x|%Y-%m-%d}<br>cum = %{y:$,.0f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df["exit_ts"],
+            y=df["dd"],
+            name="drawdown $",
+            mode="lines",
+            line=dict(color="#d97706", width=1),
+            fill="tozeroy",
+            fillcolor="rgba(217,119,6,0.18)",
+            yaxis="y2",
+            hovertemplate="%{x|%Y-%m-%d}<br>dd = %{y:$,.0f}<extra></extra>",
+        )
+    )
     # Max-DD shaded band
     if audit is not None:
-        s = audit.get("max_dd_start_date"); e = audit.get("max_dd_recovery_date")
+        s = audit.get("max_dd_start_date")
+        e = audit.get("max_dd_recovery_date")
         if isinstance(s, str) and isinstance(e, str):
             try:
-                s_ts = pd.Timestamp(s, tz="UTC"); e_ts = pd.Timestamp(e, tz="UTC")
-                fig.add_vrect(x0=s_ts, x1=e_ts,
-                              fillcolor="rgba(214, 40, 40, 0.10)",
-                              line_width=0, layer="below")
+                s_ts = pd.Timestamp(s, tz="UTC")
+                e_ts = pd.Timestamp(e, tz="UTC")
+                fig.add_vrect(
+                    x0=s_ts,
+                    x1=e_ts,
+                    fillcolor="rgba(214, 40, 40, 0.10)",
+                    line_width=0,
+                    layer="below",
+                )
                 fig.add_annotation(
                     x=s_ts + (e_ts - s_ts) / 2,
                     y=float(df["cum"].max()),
                     text=f"max-DD episode {s} → {e}",
-                    showarrow=False, yshift=-10,
+                    showarrow=False,
+                    yshift=-10,
                     font=dict(color="#d62728"),
                 )
             except Exception:
@@ -767,13 +929,18 @@ def panel_K_equity(df_trades, audit, ts):
 
     fig.update_layout(
         yaxis=dict(title="cumulative net $", tickformat="$,.0f"),
-        yaxis2=dict(title="drawdown $", overlaying="y", side="right",
-                    tickformat="$,.0f", showgrid=False),
+        yaxis2=dict(
+            title="drawdown $", overlaying="y", side="right", tickformat="$,.0f", showgrid=False
+        ),
         legend=dict(orientation="h", x=0, y=1.10),
     )
-    head = panel_open("K", "Equity curve — full period (per 1 contract)",
-                      "trades_baseline.csv", ts,
-                      note="DD shaded; red band = max-DD episode")
+    head = panel_open(
+        "K",
+        "Equity curve — full period (per 1 contract)",
+        "trades_baseline.csv",
+        ts,
+        note="DD shaded; red band = max-DD episode",
+    )
     return head + fig_to_div(fig, "fig-K-equity", height=420) + panel_close()
 
 
@@ -800,24 +967,29 @@ def panel_L_sizing(audit, df_trades, ts, account=DEFAULT_ACCOUNT):
         dd_y = float(max_dd) * s
         dd_pct = dd_y / account * 100.0
         rows.append(
-            f'<tr><td>{s} MNQ</td>'
+            f"<tr><td>{s} MNQ</td>"
             f'<td class="num">{fmt_money(net_y, plus=True)}/yr</td>'
             f'<td class="num">{fmt_money(dd_y)}</td>'
             f'<td class="num">{dd_pct:+.2f}%</td></tr>'
         )
     table = (
         '<table class="dep">'
-        f'<thead><tr><th>size</th><th>expected net</th><th>historical max DD</th>'
-        f'<th>DD as % of ${account:,.0f}</th></tr></thead>'
-        f'<tbody>{"".join(rows)}</tbody></table>'
+        f"<thead><tr><th>size</th><th>expected net</th><th>historical max DD</th>"
+        f"<th>DD as % of ${account:,.0f}</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
     )
-    head = panel_open("L", "Sizing scenarios",
-                      "within200_3020_risk_audit.csv", ts,
-                      note=f"account = ${account:,.0f}. Liquidity supports ~10–20 MNQ before execution quality degrades — don't read this as unlimited.")
+    head = panel_open(
+        "L",
+        "Sizing scenarios",
+        "within200_3020_risk_audit.csv",
+        ts,
+        note=f"account = ${account:,.0f}. Liquidity supports ~10–20 MNQ before execution quality degrades — don't read this as unlimited.",
+    )
     return head + table + panel_close()
 
 
 # ────────────────────── PANEL M: Cluster visuals ───────────────────────
+
 
 def panel_M_clusters(ts):
     if not CLUSTER_PNGS:
@@ -830,13 +1002,17 @@ def panel_M_clusters(ts):
         cells.append(
             f'<figure class="cluster-fig">'
             f'<img src="{uri}" alt="{p.name}" />'
-            f'<figcaption>{p.name}</figcaption></figure>'
+            f"<figcaption>{p.name}</figcaption></figure>"
         )
     if not cells:
         return None
-    head = panel_open("M", "Cluster visuals — example sessions",
-                      f"{len(CLUSTER_PNGS)} PNGs under results/", ts,
-                      note="OR band + cluster pool + 09:45 price; trigger sits at the cluster center within ±200 pts of the 09:45 close.")
+    head = panel_open(
+        "M",
+        "Cluster visuals — example sessions",
+        f"{len(CLUSTER_PNGS)} PNGs under results/",
+        ts,
+        note="OR band + cluster pool + 09:45 price; trigger sits at the cluster center within ±200 pts of the 09:45 close.",
+    )
     return head + f'<div class="cluster-grid">{"".join(cells)}</div>' + panel_close()
 
 
@@ -919,9 +1095,13 @@ worst losing streak is 5 trades.</p>
 
 
 def panel_N_methodology(ts):
-    head = panel_open("N", "Methodology — the why behind the numbers",
-                      "this script (narrative)", ts,
-                      note="CSVs give numbers; this section explains decisions and caveats that aren't in any file.")
+    head = panel_open(
+        "N",
+        "Methodology — the why behind the numbers",
+        "this script (narrative)",
+        ts,
+        note="CSVs give numbers; this section explains decisions and caveats that aren't in any file.",
+    )
     return head + f'<div class="narrative">{NARRATIVE}</div>' + panel_close()
 
 
@@ -1097,53 +1277,58 @@ def build_html(panels_html, panels_skipped, ts, champ):
 
 # ────────────────────── main ───────────────────────────────────────────
 
+
 def main():
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     print("Loading source CSVs...", flush=True)
-    df_audit_csv  = safe_read_csv(CSV_RISK_AUDIT)
+    df_audit_csv = safe_read_csv(CSV_RISK_AUDIT)
     audit = risk_audit_map(df_audit_csv) if df_audit_csv is not None else None
-    df_val        = safe_read_csv(CSV_VALIDATION)
-    df_tpsl       = safe_read_csv(CSV_TP_SL_GRID)
-    df_tight      = safe_read_csv(CSV_TIGHT_WF)
-    df_geom       = safe_read_csv(CSV_ENTRY_GEOM)
-    df_be         = safe_read_csv(CSV_BE_STOP)
-    df_slip       = safe_read_csv(CSV_SLIPPAGE)
-    df_fill       = safe_read_csv(CSV_FILL_REALISM)
-    df_pair       = safe_read_csv(CSV_PAIRWISE)
-    df_gate       = safe_read_csv(CSV_GATE_PROX)
-    df_regime     = safe_read_csv(CSV_REGIME_COV)
-    df_wide       = safe_read_csv(CSV_WIDE_BRACKET)
-    df_trades     = safe_read_csv(CSV_TRADES)
+    df_val = safe_read_csv(CSV_VALIDATION)
+    df_tpsl = safe_read_csv(CSV_TP_SL_GRID)
+    df_tight = safe_read_csv(CSV_TIGHT_WF)
+    df_geom = safe_read_csv(CSV_ENTRY_GEOM)
+    df_be = safe_read_csv(CSV_BE_STOP)
+    df_slip = safe_read_csv(CSV_SLIPPAGE)
+    df_fill = safe_read_csv(CSV_FILL_REALISM)
+    df_pair = safe_read_csv(CSV_PAIRWISE)
+    df_gate = safe_read_csv(CSV_GATE_PROX)
+    df_regime = safe_read_csv(CSV_REGIME_COV)
+    df_wide = safe_read_csv(CSV_WIDE_BRACKET)
+    df_trades = safe_read_csv(CSV_TRADES)
     champ = load_champion()
 
     builders = [
-        ("A · headline",        lambda: panel_A_headline(audit, ts),
-                                [CSV_RISK_AUDIT]),
-        ("B · evolution",       lambda: panel_B_evolution(df_gate, df_val, audit, ts),
-                                [CSV_GATE_PROX, CSV_VALIDATION, CSV_RISK_AUDIT]),
-        ("C · decisions",       lambda: panel_C_decisions(ts), []),
-        ("D · gate analysis",   lambda: panel_D_gate(df_gate, ts),
-                                [CSV_GATE_PROX]),
-        ("E · TP/SL surface",   lambda: panel_E_tpsl(df_tpsl, ts, champ),
-                                [CSV_TP_SL_GRID]),
-        ("F · validation",      lambda: panel_F_validation(df_tight, df_slip, df_fill, ts),
-                                [CSV_TIGHT_WF]),
-        ("G · falsification",   lambda: panel_G_falsifications(df_geom, df_be, df_wide, ts),
-                                [CSV_ENTRY_GEOM, CSV_BE_STOP, CSV_WIDE_BRACKET]),
-        ("H · risk",            lambda: panel_H_risk(audit, df_trades, ts),
-                                [CSV_RISK_AUDIT]),
-        ("I · regime",          lambda: panel_I_regime(df_regime, audit, ts),
-                                [CSV_REGIME_COV, CSV_RISK_AUDIT]),
-        ("J · deployment",      lambda: panel_J_deployment(ts),
-                                [DEPLOYMENT_PLAN]),
-        ("K · equity curve",    lambda: panel_K_equity(df_trades, audit, ts),
-                                [CSV_TRADES]),
-        ("L · sizing",          lambda: panel_L_sizing(audit, df_trades, ts),
-                                [CSV_RISK_AUDIT]),
-        ("M · cluster visuals", lambda: panel_M_clusters(ts),
-                                CLUSTER_PNGS or []),
-        ("N · methodology",     lambda: panel_N_methodology(ts), []),
+        ("A · headline", lambda: panel_A_headline(audit, ts), [CSV_RISK_AUDIT]),
+        (
+            "B · evolution",
+            lambda: panel_B_evolution(df_gate, df_val, audit, ts),
+            [CSV_GATE_PROX, CSV_VALIDATION, CSV_RISK_AUDIT],
+        ),
+        ("C · decisions", lambda: panel_C_decisions(ts), []),
+        ("D · gate analysis", lambda: panel_D_gate(df_gate, ts), [CSV_GATE_PROX]),
+        ("E · TP/SL surface", lambda: panel_E_tpsl(df_tpsl, ts, champ), [CSV_TP_SL_GRID]),
+        (
+            "F · validation",
+            lambda: panel_F_validation(df_tight, df_slip, df_fill, ts),
+            [CSV_TIGHT_WF],
+        ),
+        (
+            "G · falsification",
+            lambda: panel_G_falsifications(df_geom, df_be, df_wide, ts),
+            [CSV_ENTRY_GEOM, CSV_BE_STOP, CSV_WIDE_BRACKET],
+        ),
+        ("H · risk", lambda: panel_H_risk(audit, df_trades, ts), [CSV_RISK_AUDIT]),
+        (
+            "I · regime",
+            lambda: panel_I_regime(df_regime, audit, ts),
+            [CSV_REGIME_COV, CSV_RISK_AUDIT],
+        ),
+        ("J · deployment", lambda: panel_J_deployment(ts), [DEPLOYMENT_PLAN]),
+        ("K · equity curve", lambda: panel_K_equity(df_trades, audit, ts), [CSV_TRADES]),
+        ("L · sizing", lambda: panel_L_sizing(audit, df_trades, ts), [CSV_RISK_AUDIT]),
+        ("M · cluster visuals", lambda: panel_M_clusters(ts), CLUSTER_PNGS or []),
+        ("N · methodology", lambda: panel_N_methodology(ts), []),
     ]
 
     panels_html = []

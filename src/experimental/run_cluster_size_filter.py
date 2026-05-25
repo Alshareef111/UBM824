@@ -11,6 +11,7 @@ Outputs to results/archive/v2_4040_cluster_size_filter_20260514/:
   - trades_v2_4040_size4.parquet (F1)
   - trades_v2_4040_size5.parquet (F2)
 """
+
 from __future__ import annotations
 
 import sys
@@ -26,11 +27,14 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 import simulator_v2 as sim
-from indicators.adx import AdxClassifier, precompute_lookup as adx_lookup
-from indicators.di import DiClassifier, precompute_lookup as di_lookup
+from indicators.adx import AdxClassifier
+from indicators.adx import precompute_lookup as adx_lookup
 from indicators.base import UnanimousClassifier
-from paths import ARCHIVE_DIR, BARS_PARQUET, ORB_TABLE_PARQUET
+from indicators.di import DiClassifier
+from indicators.di import precompute_lookup as di_lookup
+
 import walk_forward as wf
+from paths import ARCHIVE_DIR, BARS_PARQUET, ORB_TABLE_PARQUET
 
 ADX_N, ADX_THR = 15, 30
 DI_N, DI_THR = 15, 8
@@ -74,12 +78,23 @@ BASELINE_WF = {
 def stats(df: pd.DataFrame, all_sessions: pd.DatetimeIndex) -> dict:
     if len(df) == 0:
         return {
-            "n_trades": 0, "n_wins": 0, "n_losses": 0, "win_rate": float("nan"),
-            "total_pnl": 0.0, "mean_pnl": float("nan"), "avg_winner": 0.0,
-            "avg_loser": 0.0, "profit_factor": float("nan"), "max_dd": 0.0,
-            "max_dd_duration_days": 0, "max_dd_recovered": False,
-            "sharpe_ann": float("nan"), "sortino_ann": float("nan"),
-            "n_target": 0, "n_stop": 0, "n_force_close": 0,
+            "n_trades": 0,
+            "n_wins": 0,
+            "n_losses": 0,
+            "win_rate": float("nan"),
+            "total_pnl": 0.0,
+            "mean_pnl": float("nan"),
+            "avg_winner": 0.0,
+            "avg_loser": 0.0,
+            "profit_factor": float("nan"),
+            "max_dd": 0.0,
+            "max_dd_duration_days": 0,
+            "max_dd_recovered": False,
+            "sharpe_ann": float("nan"),
+            "sortino_ann": float("nan"),
+            "n_target": 0,
+            "n_stop": 0,
+            "n_force_close": 0,
         }
     wins = df["pnl_dollars"] > 0
     losses = df["pnl_dollars"] < 0
@@ -107,9 +122,17 @@ def stats(df: pd.DataFrame, all_sessions: pd.DatetimeIndex) -> dict:
         rec_d = None
         dur = (eq.index[-1] - peak_d).days
 
-    sharpe = float(daily.mean() / daily.std(ddof=1) * np.sqrt(ANNUALIZATION)) if daily.std(ddof=1) > 0 else float("nan")
+    sharpe = (
+        float(daily.mean() / daily.std(ddof=1) * np.sqrt(ANNUALIZATION))
+        if daily.std(ddof=1) > 0
+        else float("nan")
+    )
     downside_dev = float(np.sqrt(((daily.clip(upper=0.0)) ** 2).mean()))
-    sortino = float(daily.mean() / downside_dev * np.sqrt(ANNUALIZATION)) if downside_dev > 0 else float("nan")
+    sortino = (
+        float(daily.mean() / downside_dev * np.sqrt(ANNUALIZATION))
+        if downside_dev > 0
+        else float("nan")
+    )
 
     return {
         "n_trades": int(len(df)),
@@ -120,7 +143,9 @@ def stats(df: pd.DataFrame, all_sessions: pd.DatetimeIndex) -> dict:
         "mean_pnl": float(df["pnl_dollars"].mean()),
         "avg_winner": float(win_pnls.mean()) if len(win_pnls) else 0.0,
         "avg_loser": float(loss_pnls.mean()) if len(loss_pnls) else 0.0,
-        "profit_factor": float(win_pnls.sum() / -loss_pnls.sum()) if len(loss_pnls) and loss_pnls.sum() < 0 else float("inf"),
+        "profit_factor": float(win_pnls.sum() / -loss_pnls.sum())
+        if len(loss_pnls) and loss_pnls.sum() < 0
+        else float("inf"),
         "max_dd": max_dd,
         "max_dd_duration_days": int(dur),
         "max_dd_recovered": rec_d is not None,
@@ -141,7 +166,9 @@ def walk_forward_score(df: pd.DataFrame) -> dict:
         "wf_median_oos": wf.median_pnl(pw),
         "wf_sign_count": wf.sign_stability_count(pw),
         "wf_oos_sum": float(sum(pw.values())),
-        "wf_qualifies_deploy": wf.qualifies(pw, total_pnl=total, sharpe_threshold=wf.NULL_P95_SHARPE_LIKE),
+        "wf_qualifies_deploy": wf.qualifies(
+            pw, total_pnl=total, sharpe_threshold=wf.NULL_P95_SHARPE_LIKE
+        ),
         **{f"wf_{w.name}": pw[w.name] for w in windows},
     }
 
@@ -156,12 +183,14 @@ def yearly(df: pd.DataFrame) -> pd.DataFrame:
     for yr in sorted(df["year"].unique()):
         sub = df[df["year"] == yr]
         wins = (sub["pnl_dollars"] > 0).sum()
-        rows.append({
-            "year": int(yr),
-            "n_trades": int(len(sub)),
-            "pnl": float(sub["pnl_dollars"].sum()),
-            "win_rate": float(wins / len(sub)) if len(sub) else float("nan"),
-        })
+        rows.append(
+            {
+                "year": int(yr),
+                "n_trades": int(len(sub)),
+                "pnl": float(sub["pnl_dollars"].sum()),
+                "win_rate": float(wins / len(sub)) if len(sub) else float("nan"),
+            }
+        )
     return pd.DataFrame(rows).set_index("year")
 
 
@@ -194,47 +223,68 @@ def label_split(df: pd.DataFrame) -> dict:
     return {"FADE": int(vc.get("FADE", 0)), "TREND": int(vc.get("TREND", 0))}
 
 
-def filter_effect_diagnostic(baseline_df: pd.DataFrame, variant_df: pd.DataFrame, min_size_threshold: int) -> dict:
+def filter_effect_diagnostic(
+    baseline_df: pd.DataFrame, variant_df: pd.DataFrame, min_size_threshold: int
+) -> dict:
     """Compare baseline trades to variant trades by (session_date, cluster_low, cluster_high).
 
     Returns stats on baseline trades that DO NOT appear in the variant — these are
     the trades that the higher MIN_CLUSTER_SIZE filtered out.
     """
-    bkeys = set(zip(
-        pd.to_datetime(baseline_df["session_date"]).astype("int64"),
-        baseline_df["cluster_low"].astype(float),
-        baseline_df["cluster_high"].astype(float),
-    ))
-    vkeys = set(zip(
-        pd.to_datetime(variant_df["session_date"]).astype("int64"),
-        variant_df["cluster_low"].astype(float),
-        variant_df["cluster_high"].astype(float),
-    )) if len(variant_df) else set()
+    bkeys = set(
+        zip(
+            pd.to_datetime(baseline_df["session_date"]).astype("int64"),
+            baseline_df["cluster_low"].astype(float),
+            baseline_df["cluster_high"].astype(float),
+        )
+    )
+    vkeys = (
+        set(
+            zip(
+                pd.to_datetime(variant_df["session_date"]).astype("int64"),
+                variant_df["cluster_low"].astype(float),
+                variant_df["cluster_high"].astype(float),
+            )
+        )
+        if len(variant_df)
+        else set()
+    )
 
     filtered_keys = bkeys - vkeys
 
     bdf = baseline_df.copy()
-    bdf["_key"] = list(zip(
-        pd.to_datetime(bdf["session_date"]).astype("int64"),
-        bdf["cluster_low"].astype(float),
-        bdf["cluster_high"].astype(float),
-    ))
+    bdf["_key"] = list(
+        zip(
+            pd.to_datetime(bdf["session_date"]).astype("int64"),
+            bdf["cluster_low"].astype(float),
+            bdf["cluster_high"].astype(float),
+        )
+    )
     filtered = bdf[bdf["_key"].isin(filtered_keys)].drop(columns=["_key"])
 
     out = {
         "n_filtered_out": int(len(filtered)),
         "total_pnl_filtered": float(filtered["pnl_dollars"].sum()) if len(filtered) else 0.0,
-        "win_rate_filtered": float((filtered["pnl_dollars"] > 0).mean()) if len(filtered) else float("nan"),
+        "win_rate_filtered": float((filtered["pnl_dollars"] > 0).mean())
+        if len(filtered)
+        else float("nan"),
         "exit_breakdown": exit_breakdown(filtered),
-        "by_size": filtered["cluster_size"].value_counts().sort_index().to_dict() if len(filtered) else {},
-        "below_threshold": int((filtered["cluster_size"] < min_size_threshold).sum()) if len(filtered) else 0,
-        "at_or_above_threshold": int((filtered["cluster_size"] >= min_size_threshold).sum()) if len(filtered) else 0,
+        "by_size": filtered["cluster_size"].value_counts().sort_index().to_dict()
+        if len(filtered)
+        else {},
+        "below_threshold": int((filtered["cluster_size"] < min_size_threshold).sum())
+        if len(filtered)
+        else 0,
+        "at_or_above_threshold": int((filtered["cluster_size"] >= min_size_threshold).sum())
+        if len(filtered)
+        else 0,
     }
     return out
 
 
-def run_variant(min_cluster_size: int, bars: pd.DataFrame, orb_table: pd.DataFrame,
-                adx_lk, di_lk) -> pd.DataFrame:
+def run_variant(
+    min_cluster_size: int, bars: pd.DataFrame, orb_table: pd.DataFrame, adx_lk, di_lk
+) -> pd.DataFrame:
     """Set module-level constants, run backtest, return trades DataFrame."""
     sim.MIN_CLUSTER_SIZE = min_cluster_size
     sim.STOP_POINTS = NEW_STOP_TARGET
@@ -252,7 +302,10 @@ def run_variant(min_cluster_size: int, bars: pd.DataFrame, orb_table: pd.DataFra
     t = time.time()
     trades = sim.run_backtest(bars, orb_table, unan)
     df = sim.trades_to_dataframe(trades)
-    print(f"  {len(df)} trades  total ${df['pnl_dollars'].sum():,.2f}  [{time.time()-t:.1f}s]", flush=True)
+    print(
+        f"  {len(df)} trades  total ${df['pnl_dollars'].sum():,.2f}  [{time.time() - t:.1f}s]",
+        flush=True,
+    )
     return df
 
 
@@ -303,43 +356,69 @@ def main():
     f2_diag = filter_effect_diagnostic(baseline_df, f2_df, min_size_threshold=5)
 
     write_report(
-        b_stats, f1_stats, f2_stats,
-        b_wf, f1_wf, f2_wf,
-        b_year, f1_year, f2_year,
-        f1_df, f2_df,
-        f1_diag, f2_diag,
+        b_stats,
+        f1_stats,
+        f2_stats,
+        b_wf,
+        f1_wf,
+        f2_wf,
+        b_year,
+        f1_year,
+        f2_year,
+        f1_df,
+        f2_df,
+        f1_diag,
+        f2_diag,
         baseline_df,
     )
-    print(f"\nTotal elapsed: {(time.time()-t0):.1f}s", flush=True)
+    print(f"\nTotal elapsed: {(time.time() - t0):.1f}s", flush=True)
     print(f"Artifacts: {OUT_DIR}", flush=True)
 
 
 def write_report(
-    b_stats, f1_stats, f2_stats,
-    b_wf, f1_wf, f2_wf,
-    b_year, f1_year, f2_year,
-    f1_df, f2_df,
-    f1_diag, f2_diag,
+    b_stats,
+    f1_stats,
+    f2_stats,
+    b_wf,
+    f1_wf,
+    f2_wf,
+    b_year,
+    f1_year,
+    f2_year,
+    f1_df,
+    f2_df,
+    f1_diag,
+    f2_diag,
     baseline_df,
 ):
-    fmt_money = lambda v: f"${v:,.0f}" if not (isinstance(v, float) and (np.isnan(v) or np.isinf(v))) else "—"
-    fmt_money2 = lambda v: f"${v:,.2f}" if not (isinstance(v, float) and (np.isnan(v) or np.isinf(v))) else "—"
+    fmt_money = lambda v: (
+        f"${v:,.0f}" if not (isinstance(v, float) and (np.isnan(v) or np.isinf(v))) else "—"
+    )
+    fmt_money2 = lambda v: (
+        f"${v:,.2f}" if not (isinstance(v, float) and (np.isnan(v) or np.isinf(v))) else "—"
+    )
     fmt_pct = lambda v: f"{v:.1%}" if not (isinstance(v, float) and np.isnan(v)) else "—"
 
     lines: list[str] = []
     lines.append("# Cluster-size filter test — V2 + 40/40 with MIN_CLUSTER_SIZE = {4, 5}")
     lines.append("")
     lines.append(f"**Date:** {date.today().isoformat()}")
-    lines.append("**Change tested:** raise `MIN_CLUSTER_SIZE` from baseline 3 to 4 (F1) and 5 (F2).")
+    lines.append(
+        "**Change tested:** raise `MIN_CLUSTER_SIZE` from baseline 3 to 4 (F1) and 5 (F2)."
+    )
     lines.append("**All other rules unchanged from V2 + 40/40 baseline:**")
     lines.append("- ADX(15,30) ∧ DI(15,8) unanimous classifier, FADE/TREND side-flip")
     lines.append("- 1 contract, 40-pt stop / 40-pt target, 1:1 R:R")
     lines.append("- Near-border entry (cluster.low for short, cluster.high for long)")
     lines.append("- 9:46–11:30 NY window, force-close at 11:30 bar open")
-    lines.append("- 3-pt cluster gap, 200-session lookback, C2 one-position-at-a-time, stop-first conservative")
+    lines.append(
+        "- 3-pt cluster gap, 200-session lookback, C2 one-position-at-a-time, stop-first conservative"
+    )
     lines.append("")
-    lines.append("Baseline column copied from `results/archive/strategy_report_20260512/strategy_4040_test.md` "
-                 "(v2 40/40). F1 and F2 freshly run; baseline NOT re-run.")
+    lines.append(
+        "Baseline column copied from `results/archive/strategy_report_20260512/strategy_4040_test.md` "
+        "(v2 40/40). F1 and F2 freshly run; baseline NOT re-run."
+    )
     lines.append("")
 
     # Headline 3-way table
@@ -354,7 +433,10 @@ def write_report(
         ("Mean per entry", lambda h: fmt_money2(h["mean_pnl"])),
         ("Avg winner", lambda h: fmt_money(h["avg_winner"])),
         ("Avg loser", lambda h: fmt_money(h["avg_loser"])),
-        ("PF", lambda h: f"{h['profit_factor']:.3f}" if h["profit_factor"] != float("inf") else "∞"),
+        (
+            "PF",
+            lambda h: f"{h['profit_factor']:.3f}" if h["profit_factor"] != float("inf") else "∞",
+        ),
         ("Max DD", lambda h: fmt_money(h["max_dd"])),
         ("DD duration (days)", lambda h: f"{h['max_dd_duration_days']}"),
         ("DD recovered", lambda h: "yes" if h["max_dd_recovered"] else "no"),
@@ -377,19 +459,30 @@ def write_report(
         lines.append(f"| {label} | " + " | ".join(cells) + " |")
     lines.append("")
 
-    def write_variant_subsection(name: str, df: pd.DataFrame, st: dict, wfs: dict,
-                                 yr: pd.DataFrame, diag: dict, min_size: int):
+    def write_variant_subsection(
+        name: str,
+        df: pd.DataFrame,
+        st: dict,
+        wfs: dict,
+        yr: pd.DataFrame,
+        diag: dict,
+        min_size: int,
+    ):
         lines.append(f"## {name}")
         lines.append("")
 
         # 1. Walk-forward per-window OOS
         windows = wf.make_windows()
-        lines.append(f"### Walk-forward per-window OOS")
+        lines.append("### Walk-forward per-window OOS")
         lines.append("")
         lines.append("| " + " | ".join(w.name for w in windows) + " | Sharpe-like | Sign |")
         lines.append("|" + "|".join(["---:"] * (len(windows) + 2)) + "|")
         cells = [fmt_money(wfs[f"wf_{w.name}"]) for w in windows]
-        lines.append("| " + " | ".join(cells) + f" | {wfs['wf_sharpe_like']:.2f} | {wfs['wf_sign_count']}/7 |")
+        lines.append(
+            "| "
+            + " | ".join(cells)
+            + f" | {wfs['wf_sharpe_like']:.2f} | {wfs['wf_sign_count']}/7 |"
+        )
         lines.append("")
 
         # 2. Calendar-year P&L
@@ -398,7 +491,9 @@ def write_report(
         lines.append("| Year | Trades | P&L | WR% |")
         lines.append("|---:|---:|---:|---:|")
         for y in sorted(yr.index):
-            lines.append(f"| {y} | {int(yr.loc[y,'n_trades'])} | {fmt_money(yr.loc[y,'pnl'])} | {fmt_pct(yr.loc[y,'win_rate'])} |")
+            lines.append(
+                f"| {y} | {int(yr.loc[y, 'n_trades'])} | {fmt_money(yr.loc[y, 'pnl'])} | {fmt_pct(yr.loc[y, 'win_rate'])} |"
+            )
         lines.append("")
 
         # 3. Exit-type breakdown
@@ -410,7 +505,9 @@ def write_report(
         for reason in ["target", "stop", "force_close"]:
             if reason in eb.index:
                 row = eb.loc[reason]
-                lines.append(f"| {reason} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |")
+                lines.append(
+                    f"| {reason} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |"
+                )
             else:
                 lines.append(f"| {reason} | 0 | — | — |")
         lines.append("")
@@ -434,19 +531,31 @@ def write_report(
             label = "7+" if size == 7 else str(size)
             if size in csd.index:
                 row = csd.loc[size]
-                lines.append(f"| {label} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |")
+                lines.append(
+                    f"| {label} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |"
+                )
             else:
                 lines.append(f"| {label} | 0 | — | — |")
         lines.append("")
 
         # 6. Filter-effect diagnostic
-        lines.append(f"### Filter-effect diagnostic vs baseline (matched by session_date + cluster_low + cluster_high)")
+        lines.append(
+            "### Filter-effect diagnostic vs baseline (matched by session_date + cluster_low + cluster_high)"
+        )
         lines.append("")
-        lines.append(f"- Baseline trades that do NOT appear in this variant: **{diag['n_filtered_out']}**")
-        lines.append(f"- Total P&L of those filtered-out trades (in baseline): **{fmt_money(diag['total_pnl_filtered'])}**")
+        lines.append(
+            f"- Baseline trades that do NOT appear in this variant: **{diag['n_filtered_out']}**"
+        )
+        lines.append(
+            f"- Total P&L of those filtered-out trades (in baseline): **{fmt_money(diag['total_pnl_filtered'])}**"
+        )
         lines.append(f"- WR% of filtered-out trades: **{fmt_pct(diag['win_rate_filtered'])}**")
-        lines.append(f"- Of those, cluster_size < {min_size} (filter-explained): {diag['below_threshold']}")
-        lines.append(f"- Of those, cluster_size >= {min_size} (C2-reorder displaced): {diag['at_or_above_threshold']}")
+        lines.append(
+            f"- Of those, cluster_size < {min_size} (filter-explained): {diag['below_threshold']}"
+        )
+        lines.append(
+            f"- Of those, cluster_size >= {min_size} (C2-reorder displaced): {diag['at_or_above_threshold']}"
+        )
         lines.append("")
         lines.append("Exit-type breakdown of filtered-out trades:")
         lines.append("")
@@ -456,7 +565,9 @@ def write_report(
         for reason in ["target", "stop", "force_close"]:
             if reason in feb.index:
                 row = feb.loc[reason]
-                lines.append(f"| {reason} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |")
+                lines.append(
+                    f"| {reason} | {int(row['count'])} | {fmt_money2(row['mean_pnl'])} | {fmt_money(row['total_pnl'])} |"
+                )
             else:
                 lines.append(f"| {reason} | 0 | — | — |")
         lines.append("")
@@ -469,8 +580,12 @@ def write_report(
                 lines.append(f"| {int(s)} | {int(diag['by_size'][s])} |")
             lines.append("")
 
-    write_variant_subsection("F1 — MIN_CLUSTER_SIZE = 4", f1_df, f1_stats, f1_wf, f1_year, f1_diag, 4)
-    write_variant_subsection("F2 — MIN_CLUSTER_SIZE = 5", f2_df, f2_stats, f2_wf, f2_year, f2_diag, 5)
+    write_variant_subsection(
+        "F1 — MIN_CLUSTER_SIZE = 4", f1_df, f1_stats, f1_wf, f1_year, f1_diag, 4
+    )
+    write_variant_subsection(
+        "F2 — MIN_CLUSTER_SIZE = 5", f2_df, f2_stats, f2_wf, f2_year, f2_diag, 5
+    )
 
     lines.append("## Files")
     lines.append("")
@@ -489,9 +604,63 @@ def write_report(
     print(f"{'Metric':<28} {'Baseline':>14} {'F1 (>=4)':>14} {'F2 (>=5)':>14}")
     print("-" * 78)
     for label, fn in metrics + wf_metrics:
-        b = fn(b_stats) if label in {"Trades","WR%","Total P&L","Mean per entry","Avg winner","Avg loser","PF","Max DD","DD duration (days)","DD recovered","Ann. Sharpe","Ann. Sortino"} else fn(b_wf)
-        f1c = fn(f1_stats) if label in {"Trades","WR%","Total P&L","Mean per entry","Avg winner","Avg loser","PF","Max DD","DD duration (days)","DD recovered","Ann. Sharpe","Ann. Sortino"} else fn(f1_wf)
-        f2c = fn(f2_stats) if label in {"Trades","WR%","Total P&L","Mean per entry","Avg winner","Avg loser","PF","Max DD","DD duration (days)","DD recovered","Ann. Sharpe","Ann. Sortino"} else fn(f2_wf)
+        b = (
+            fn(b_stats)
+            if label
+            in {
+                "Trades",
+                "WR%",
+                "Total P&L",
+                "Mean per entry",
+                "Avg winner",
+                "Avg loser",
+                "PF",
+                "Max DD",
+                "DD duration (days)",
+                "DD recovered",
+                "Ann. Sharpe",
+                "Ann. Sortino",
+            }
+            else fn(b_wf)
+        )
+        f1c = (
+            fn(f1_stats)
+            if label
+            in {
+                "Trades",
+                "WR%",
+                "Total P&L",
+                "Mean per entry",
+                "Avg winner",
+                "Avg loser",
+                "PF",
+                "Max DD",
+                "DD duration (days)",
+                "DD recovered",
+                "Ann. Sharpe",
+                "Ann. Sortino",
+            }
+            else fn(f1_wf)
+        )
+        f2c = (
+            fn(f2_stats)
+            if label
+            in {
+                "Trades",
+                "WR%",
+                "Total P&L",
+                "Mean per entry",
+                "Avg winner",
+                "Avg loser",
+                "PF",
+                "Max DD",
+                "DD duration (days)",
+                "DD recovered",
+                "Ann. Sharpe",
+                "Ann. Sortino",
+            }
+            else fn(f2_wf)
+        )
         b = b.replace("**", "")
         f1c = f1c.replace("**", "")
         f2c = f2c.replace("**", "")
@@ -501,13 +670,21 @@ def write_report(
     print("FILTER-EFFECT DIAGNOSTIC — F1 (size>=4)")
     print(f"  filtered-out trades: {f1_diag['n_filtered_out']}")
     print(f"  total P&L of filtered: ${f1_diag['total_pnl_filtered']:,.0f}")
-    print(f"  WR% of filtered: {f1_diag['win_rate_filtered']:.1%}" if not np.isnan(f1_diag['win_rate_filtered']) else "  WR% of filtered: —")
+    print(
+        f"  WR% of filtered: {f1_diag['win_rate_filtered']:.1%}"
+        if not np.isnan(f1_diag["win_rate_filtered"])
+        else "  WR% of filtered: —"
+    )
     print(f"  by size: {f1_diag['by_size']}")
     print()
     print("FILTER-EFFECT DIAGNOSTIC — F2 (size>=5)")
     print(f"  filtered-out trades: {f2_diag['n_filtered_out']}")
     print(f"  total P&L of filtered: ${f2_diag['total_pnl_filtered']:,.0f}")
-    print(f"  WR% of filtered: {f2_diag['win_rate_filtered']:.1%}" if not np.isnan(f2_diag['win_rate_filtered']) else "  WR% of filtered: —")
+    print(
+        f"  WR% of filtered: {f2_diag['win_rate_filtered']:.1%}"
+        if not np.isnan(f2_diag["win_rate_filtered"])
+        else "  WR% of filtered: —"
+    )
     print(f"  by size: {f2_diag['by_size']}")
 
 
