@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from clusters import Cluster
-from indicators.base import Label
+from regime_indicators.base import Label
 
 
 def compute_vwap_series(bars: pd.DataFrame, anchor: str) -> pd.Series:

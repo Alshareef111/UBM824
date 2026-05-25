@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from clusters import Cluster
-from indicators.base import Label
+from regime_indicators.base import Label
 
 
 def compute_di_spread_series(bars: pd.DataFrame, n: int) -> pd.Series:

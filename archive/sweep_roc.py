@@ -17,7 +17,7 @@ from datetime import date
 
 import pandas as pd
 
-from indicators.roc import RocClassifier, precompute_lookup
+from regime_indicators.roc import RocClassifier, precompute_lookup
 from paths import ARCHIVE_DIR, BARS_PARQUET, ORB_TABLE_PARQUET, ensure_dirs
 from simulator_v2 import run_backtest, trades_to_dataframe
 import walk_forward as wf
