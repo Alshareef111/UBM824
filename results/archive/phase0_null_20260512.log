@@ -1,0 +1,61 @@
+Loading bars + ORB table...
+  2,467,393 bars, 1805 ORB sessions
+
+Running 50 RandomBinary seeds:
+  seed=  1        trades=1693  fade_frac=51.7%  median=$    -57  sharpe= -0.11  sign=2/7  [2.9s]
+  seed=  2        trades=1693  fade_frac=51.4%  median=$    248  sharpe=  0.49  sign=5/7  [2.9s]
+  seed=  3        trades=1693  fade_frac=50.7%  median=$    -30  sharpe= -0.11  sign=3/7  [2.9s]
+  seed=  4        trades=1693  fade_frac=49.4%  median=$    200  sharpe=  0.19  sign=5/7  [2.9s]
+  seed=  5        trades=1693  fade_frac=49.9%  median=$    101  sharpe=  0.09  sign=5/7  [2.9s]
+  seed=  6        trades=1693  fade_frac=49.5%  median=$   -416  sharpe= -0.63  sign=2/7  [2.9s]
+  seed=  7        trades=1693  fade_frac=49.6%  median=$    150  sharpe=  0.15  sign=4/7  [2.9s]
+  seed=  8        trades=1693  fade_frac=49.6%  median=$    580  sharpe=  0.84  sign=5/7  [2.9s]
+  seed=  9        trades=1693  fade_frac=48.1%  median=$   -325  sharpe= -0.82  sign=1/7  [3.0s]
+  seed= 10        trades=1693  fade_frac=49.7%  median=$    204  sharpe=  0.18  sign=4/7  [2.9s]
+  seed= 11        trades=1693  fade_frac=50.7%  median=$   -234  sharpe= -0.33  sign=3/7  [2.9s]
+  seed= 12        trades=1693  fade_frac=51.0%  median=$   -143  sharpe= -0.27  sign=2/7  [2.9s]
+  seed= 13        trades=1693  fade_frac=50.3%  median=$    126  sharpe=  0.18  sign=4/7  [2.9s]
+  seed= 14        trades=1693  fade_frac=51.9%  median=$    -22  sharpe= -0.05  sign=3/7  [2.9s]
+  seed= 15        trades=1693  fade_frac=49.4%  median=$   1193  sharpe=  0.98  sign=5/7  [2.8s]
+  seed= 16        trades=1693  fade_frac=50.7%  median=$     83  sharpe=  0.08  sign=4/7  [2.9s]
+  seed= 17        trades=1693  fade_frac=49.4%  median=$    506  sharpe=  0.38  sign=4/7  [2.9s]
+  seed= 18        trades=1693  fade_frac=49.7%  median=$   -604  sharpe= -1.31  sign=2/7  [2.9s]
+  seed= 19        trades=1693  fade_frac=52.2%  median=$    260  sharpe=  0.48  sign=4/7  [2.9s]
+  seed= 20        trades=1693  fade_frac=50.8%  median=$   -538  sharpe= -0.64  sign=3/7  [2.9s]
+  seed= 21        trades=1693  fade_frac=50.1%  median=$   -240  sharpe= -0.35  sign=2/7  [2.9s]
+  seed= 22  QUAL  trades=1693  fade_frac=50.3%  median=$    688  sharpe=  1.18  sign=6/7  [2.9s]
+  seed= 23        trades=1693  fade_frac=48.1%  median=$   -738  sharpe= -1.04  sign=2/7  [2.9s]
+  seed= 24        trades=1693  fade_frac=51.2%  median=$    -78  sharpe= -0.15  sign=3/7  [2.9s]
+  seed= 25        trades=1693  fade_frac=49.3%  median=$   -476  sharpe= -0.80  sign=1/7  [2.9s]
+  seed= 26        trades=1693  fade_frac=48.6%  median=$    317  sharpe=  0.42  sign=4/7  [2.9s]
+  seed= 27        trades=1693  fade_frac=50.4%  median=$   -614  sharpe= -0.89  sign=3/7  [2.9s]
+  seed= 28        trades=1693  fade_frac=51.2%  median=$    496  sharpe=  0.56  sign=5/7  [2.9s]
+  seed= 29        trades=1693  fade_frac=49.9%  median=$    -76  sharpe= -0.09  sign=2/7  [2.9s]
+  seed= 30        trades=1693  fade_frac=48.6%  median=$   -728  sharpe= -0.87  sign=1/7  [2.9s]
+  seed= 31        trades=1693  fade_frac=47.8%  median=$    251  sharpe=  0.17  sign=4/7  [2.9s]
+  seed= 32        trades=1693  fade_frac=50.3%  median=$    206  sharpe=  0.28  sign=4/7  [2.9s]
+  seed= 33        trades=1693  fade_frac=49.4%  median=$    724  sharpe=  1.13  sign=5/7  [2.9s]
+  seed= 34        trades=1693  fade_frac=49.4%  median=$    143  sharpe=  0.16  sign=4/7  [2.9s]
+  seed= 35        trades=1693  fade_frac=49.9%  median=$   -737  sharpe= -0.74  sign=3/7  [2.9s]
+  seed= 36        trades=1693  fade_frac=50.6%  median=$   -425  sharpe= -0.49  sign=2/7  [2.9s]
+  seed= 37        trades=1693  fade_frac=49.4%  median=$   -167  sharpe= -0.29  sign=3/7  [2.9s]
+  seed= 38        trades=1693  fade_frac=50.4%  median=$    154  sharpe=  0.13  sign=4/7  [2.9s]
+  seed= 39        trades=1693  fade_frac=50.6%  median=$   -226  sharpe= -0.19  sign=3/7  [2.9s]
+  seed= 40        trades=1693  fade_frac=48.0%  median=$   -201  sharpe= -0.34  sign=3/7  [2.9s]
+  seed= 41        trades=1693  fade_frac=51.5%  median=$   -618  sharpe= -0.55  sign=2/7  [2.9s]
+  seed= 42        trades=1693  fade_frac=49.7%  median=$   -688  sharpe= -0.75  sign=3/7  [2.9s]
+  seed= 43        trades=1693  fade_frac=52.3%  median=$   -520  sharpe= -0.49  sign=3/7  [2.9s]
+  seed= 44        trades=1693  fade_frac=50.2%  median=$    232  sharpe=  0.28  sign=5/7  [2.9s]
+  seed= 45        trades=1693  fade_frac=48.7%  median=$    -32  sharpe= -0.04  sign=3/7  [2.9s]
+  seed= 46        trades=1693  fade_frac=49.1%  median=$    -69  sharpe= -0.10  sign=2/7  [2.9s]
+  seed= 47        trades=1693  fade_frac=49.9%  median=$    594  sharpe=  0.85  sign=5/7  [2.9s]
+  seed= 48        trades=1693  fade_frac=49.9%  median=$     -4  sharpe= -0.00  sign=3/7  [2.9s]
+  seed= 49        trades=1693  fade_frac=49.1%  median=$   -734  sharpe= -0.88  sign=2/7  [2.9s]
+  seed= 50  QUAL  trades=1693  fade_frac=49.7%  median=$    392  sharpe=  1.21  sign=6/7  [2.9s]
+
+Wrote null_stats.parquet  (50 seeds)
+Wrote /Users/hashim/Desktop/MNQ-Strategy/results/archive/phase0_null_20260512/report.md
+
+Qualification rate: 2/50 = 4.0%
+Total elapsed: 2.4 min
+Artifacts: /Users/hashim/Desktop/MNQ-Strategy/results/archive/phase0_null_20260512

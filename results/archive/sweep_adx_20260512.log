@@ -1,0 +1,68 @@
+Loading bars + ORB table...
+  2,467,393 bars, 1805 ORB sessions
+Pre-computing ADX(N) series for each N (vectorized)...
+  ADX(N=15) ready in 3.8s (2,467,393 entries)
+  ADX(N=30) ready in 3.7s (2,467,393 entries)
+  ADX(N=60) ready in 3.7s (2,467,393 entries)
+  ADX(N=120) ready in 3.8s (2,467,393 entries)
+  ADX(N=240) ready in 3.8s (2,467,393 entries)
+  ADX(N=390) ready in 3.5s (2,467,393 entries)
+  ADX(N=780) ready in 3.6s (2,467,393 entries)
+  Pre-compute total: 26.0s
+
+Sweeping 49 configs:
+        N=  15 thr=15  trades=1693 (F= 147 T=1546)  OOS median=$    416  sharpe=  0.30  sign=4/7  [3.0s]
+  QUAL  N=  15 thr=20  trades=1693 (F= 485 T=1208)  OOS median=$    780  sharpe=  1.36  sign=6/7  [2.9s]
+  QUAL  N=  15 thr=25  trades=1693 (F= 815 T= 878)  OOS median=$   1535  sharpe=  2.15  sign=7/7  [2.9s]
+  QUAL  N=  15 thr=30  trades=1693 (F=1089 T= 604)  OOS median=$   1174  sharpe=  4.02  sign=7/7  [2.9s]
+  QUAL  N=  15 thr=35  trades=1693 (F=1293 T= 400)  OOS median=$    112  sharpe=  0.18  sign=6/7  [2.9s]
+        N=  15 thr=40  trades=1693 (F=1452 T= 241)  OOS median=$     23  sharpe=  0.04  sign=4/7  [2.9s]
+        N=  15 thr=45  trades=1693 (F=1544 T= 149)  OOS median=$   -301  sharpe= -0.47  sign=2/7  [3.3s]
+  QUAL  N=  30 thr=15  trades=1693 (F= 493 T=1200)  OOS median=$    921  sharpe=  1.27  sign=6/7  [2.9s]
+  QUAL  N=  30 thr=20  trades=1693 (F= 933 T= 760)  OOS median=$    904  sharpe=  1.63  sign=6/7  [2.9s]
+        N=  30 thr=25  trades=1693 (F=1251 T= 442)  OOS median=$    424  sharpe=  0.57  sign=5/7  [2.9s]
+        N=  30 thr=30  trades=1693 (F=1453 T= 240)  OOS median=$     21  sharpe=  0.03  sign=4/7  [2.9s]
+        N=  30 thr=35  trades=1693 (F=1560 T= 133)  OOS median=$   -210  sharpe= -0.24  sign=2/7  [2.9s]
+        N=  30 thr=40  trades=1693 (F=1633 T=  60)  OOS median=$    150  sharpe=  0.15  sign=4/7  [2.9s]
+        N=  30 thr=45  trades=1693 (F=1666 T=  27)  OOS median=$    270  sharpe=  0.22  sign=4/7  [2.9s]
+        N=  60 thr=15  trades=1693 (F= 964 T= 729)  OOS median=$    241  sharpe=  0.25  sign=5/7  [2.9s]
+        N=  60 thr=20  trades=1693 (F=1347 T= 346)  OOS median=$   -296  sharpe= -0.44  sign=0/7  [2.9s]
+        N=  60 thr=25  trades=1693 (F=1529 T= 164)  OOS median=$     21  sharpe=  0.03  sign=4/7  [2.9s]
+        N=  60 thr=30  trades=1693 (F=1633 T=  60)  OOS median=$    150  sharpe=  0.13  sign=4/7  [2.9s]
+        N=  60 thr=35  trades=1693 (F=1679 T=  14)  OOS median=$    510  sharpe=  0.38  sign=4/7  [2.9s]
+        N=  60 thr=40  trades=1693 (F=1690 T=   3)  OOS median=$    510  sharpe=  0.34  sign=4/7  [2.9s]
+        N=  60 thr=45  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 120 thr=15  trades=1693 (F=1420 T= 273)  OOS median=$   -270  sharpe= -0.28  sign=2/7  [2.9s]
+        N= 120 thr=20  trades=1693 (F=1615 T=  78)  OOS median=$    164  sharpe=  0.13  sign=4/7  [2.9s]
+        N= 120 thr=25  trades=1693 (F=1677 T=  16)  OOS median=$    448  sharpe=  0.35  sign=4/7  [2.9s]
+        N= 120 thr=30  trades=1693 (F=1687 T=   6)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 120 thr=35  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 120 thr=40  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 120 thr=45  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=15  trades=1693 (F=1639 T=  54)  OOS median=$    208  sharpe=  0.15  sign=4/7  [2.9s]
+        N= 240 thr=20  trades=1693 (F=1682 T=  11)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=25  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=30  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=35  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=40  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 240 thr=45  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 390 thr=15  trades=1693 (F=1675 T=  18)  OOS median=$    568  sharpe=  0.40  sign=4/7  [2.9s]
+        N= 390 thr=20  trades=1693 (F=1690 T=   3)  OOS median=$    390  sharpe=  0.29  sign=4/7  [2.9s]
+        N= 390 thr=25  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 390 thr=30  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 390 thr=35  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 390 thr=40  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [3.5s]
+        N= 390 thr=45  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=15  trades=1693 (F=1691 T=   2)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=20  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=25  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=30  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=35  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.8s]
+        N= 780 thr=40  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+        N= 780 thr=45  trades=1693 (F=1693 T=   0)  OOS median=$    510  sharpe=  0.37  sign=4/7  [2.9s]
+
+Wrote sweep_results.parquet (49 rows)
+Wrote /Users/hashim/Desktop/MNQ-Strategy/results/archive/sweep_adx_20260512/report.md
+
+Total elapsed: 2.8 min
+Artifacts: /Users/hashim/Desktop/MNQ-Strategy/results/archive/sweep_adx_20260512

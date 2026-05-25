@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -14,26 +15,61 @@ venv/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# IDE
-.idea/
-.vscode/
-
-# macOS
+# OS
 .DS_Store
 
-# Data — never commit raw market data
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-
-# Results — generated artifacts
-results/*
-!results/.gitkeep
+# Editor
+.idea/
+.vscode/
+*.swp
 
 # vectorbt cache
 .vbt_cache/
 
-# Secrets
+# Secrets — API keys, credentials. NEVER commit.
 .env
+.env.*
+!.env.example
 *.key
+*.pem
+credentials.json
+
+# Raw market data (large, regenerable from Databento; manifests stay tracked)
+data/raw/*.csv
+data/raw/*.txt
+
+# Large derived parquets (regenerable from raw via data_prep / build_tick_cache)
+data/processed/mnq_adjusted_1m.parquet
+data/processed/ticks_overlap.parquet
+
+# Local pre-extension safety-net backups (re-creatable from clean reruns)
+*.pre-extend-*
+
+# Tick files
+data/raw/MNQ*.LastT.txt
+data/raw/MNQ*.LastT
+
+# Databento DBN tick downloads (large, re-acquirable from Databento API).
+# Keep the corresponding processed parquet caches under data/processed/
+# subject to the data/processed/*.parquet rule below.
+data/raw/*.dbn
+data/raw/*.dbn.zst
+
+# Processed parquets (large/regenerable). Keep the locked baseline trades.parquet
+# as a sha256-pinned historical reference.
+data/processed/*.parquet
+!data/processed/trades.parquet
+data/processed/*.parquet.backup
+
+# Derived Databento tick caches (regeneratable from data/raw/*.dbn.zst via
+# src/build_tick_cache_databento.py). Already covered by the
+# data/processed/*.parquet rule above; listed here explicitly for clarity.
+data/processed/ticks_databento_*.parquet
+
+# Generated charts
+results/charts/*.png
+results/archive/**/*.png
+
+# Archived experiment outputs (regenerable). Recursive so per-experiment
+# subdirectories are caught too.
+results/archive/**/*.parquet

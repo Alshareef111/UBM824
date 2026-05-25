@@ -1,0 +1,81 @@
+Loading bars + ORB table for re-runs...
+
+=== Analysis 1: Window-trend regression ===
+             label   sharpe  slope_per_window  r_squared    t_stat  drift_W1_to_W7
+B ADX∧DI unanimous 5.317827         32.839286   0.121677  0.832267           304.0
+        A solo ADX 4.020000         99.607143   0.542880  2.436810           902.5
+         A solo DI 2.298178       -230.250000   0.572706 -2.588736         -1185.5
+         A LOO-ATR 1.998756        -48.285714   0.100395 -0.746990          -409.0
+          A LOO-DI 1.374267        -56.821429   0.466423 -2.090625          -361.5
+         A LOO-ROC 1.154476        -99.160714   0.679538 -3.256140          -503.0
+
+=== Analysis 2: DI discrimination check ===
+  Re-running DI(15,8) for baseline scores...
+  DI(15,8) actual: trend_frac=0.731  sharpe=2.30
+
+  Running 30 BiasedRandom(trend_prob=0.73) seeds...
+    seed= 1  trend_frac=0.744  sharpe=-0.55  median=$ -602  total=$   362  [2.9s]
+    seed= 2  trend_frac=0.735  sharpe=0.65  median=$  586  total=$  3480  [3.0s]
+    seed= 3  trend_frac=0.722  sharpe=0.20  median=$  147  total=$  -940  [2.9s]
+    seed= 4  trend_frac=0.719  sharpe=0.08  median=$   62  total=$  4142  [2.9s]
+    seed= 5  trend_frac=0.751  sharpe=-0.04  median=$  -34  total=$  2052  [3.0s]
+    seed= 6  trend_frac=0.744  sharpe=0.37  median=$  364  total=$  4256  [3.0s]
+    seed= 7  trend_frac=0.727  sharpe=-0.06  median=$ -102  total=$   406  [2.9s]
+    seed= 8  trend_frac=0.752  sharpe=-0.10  median=$ -142  total=$  2490  [2.9s]
+    seed= 9  trend_frac=0.727  sharpe=-0.96  median=$-1470  total=$   694  [2.9s]
+    seed=10  trend_frac=0.743  sharpe=0.10  median=$  128  total=$  3254  [2.9s]
+    seed=11  trend_frac=0.734  sharpe=-0.35  median=$ -362  total=$  2608  [2.9s]
+    seed=12  trend_frac=0.734  sharpe=0.19  median=$  166  total=$  1794  [2.9s]
+    seed=13  trend_frac=0.731  sharpe=-0.04  median=$  -28  total=$  1816  [2.8s]
+    seed=14  trend_frac=0.720  sharpe=-0.95  median=$ -420  total=$  -624  [2.8s]
+    seed=15  trend_frac=0.726  sharpe=0.67  median=$  889  total=$   376  [2.8s]
+    seed=16  trend_frac=0.747  sharpe=-0.41  median=$ -212  total=$  -112  [2.8s]
+    seed=17  trend_frac=0.734  sharpe=-0.04  median=$  -25  total=$  1342  [2.8s]
+    seed=18  trend_frac=0.741  sharpe=-0.92  median=$ -582  total=$  -866  [2.8s]
+    seed=19  trend_frac=0.727  sharpe=0.90  median=$  809  total=$  2730  [2.8s]
+    seed=20  trend_frac=0.719  sharpe=0.21  median=$  192  total=$  1820  [2.8s]
+    seed=21  trend_frac=0.711  sharpe=-0.35  median=$ -608  total=$ -1626  [2.8s]
+    seed=22  trend_frac=0.727  sharpe=-0.59  median=$ -976  total=$  -412  [2.8s]
+    seed=23  trend_frac=0.738  sharpe=-0.13  median=$ -100  total=$  -432  [2.9s]
+    seed=24  trend_frac=0.732  sharpe=-1.47  median=$-1266  total=$ -1482  [2.8s]
+    seed=25  trend_frac=0.721  sharpe=-0.48  median=$ -527  total=$   270  [2.9s]
+    seed=26  trend_frac=0.716  sharpe=-0.20  median=$ -180  total=$  -248  [2.8s]
+    seed=27  trend_frac=0.757  sharpe=-0.76  median=$ -800  total=$ -1136  [2.8s]
+    seed=28  trend_frac=0.734  sharpe=-1.58  median=$ -616  total=$ -2664  [2.8s]
+    seed=29  trend_frac=0.733  sharpe=-0.71  median=$ -729  total=$   124  [2.8s]
+    seed=30  trend_frac=0.741  sharpe=-0.05  median=$  -39  total=$  -142  [2.8s]
+
+  DI(15,8) actual scores:
+    sharpe=2.30  median=$1510  total=$7426  trend_frac=0.731
+
+  BiasedRandom(73%) distribution over 30 seeds:
+    sharpe: mean=-0.25  p95=0.66  max=0.90
+    median: mean=$-216  p95=$708  max=$889
+    total:  mean=$778  p95=$3844  max=$4256
+
+  DI percentile within random:  sharpe=100.0%  median=100.0%  total=100.0%
+
+=== Analysis 3: AllFade vs ADX∧DI on 2026 Jan-Apr ===
+
+  AllFade (locked baseline):       trades= 189  total=$   1620  WR=57.7%
+  ADX∧DI unanimous (deployment):   trades= 113  total=$    199  WR=51.3%
+
+  AllFade monthly:
+          n    pnl        wr
+month                       
+2026-01  67  479.5  0.567164
+2026-02  56  541.0  0.589286
+2026-03  40  360.0  0.575000
+2026-04  26  240.0  0.576923
+
+  ADX∧DI monthly:
+          n    pnl        wr
+month                       
+2026-01  38  139.0  0.526316
+2026-02  41  -60.0  0.487805
+2026-03  24 -120.0  0.458333
+2026-04  10  240.0  0.700000
+Wrote /Users/hashim/Desktop/MNQ-Strategy/results/archive/phase7_20260512/report.md
+
+Total elapsed: 1.5 min
+Artifacts: /Users/hashim/Desktop/MNQ-Strategy/results/archive/phase7_20260512

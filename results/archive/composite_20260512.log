@@ -1,0 +1,27 @@
+Loading bars + ORB table...
+  2,467,393 bars, 1805 ORB sessions
+
+Pre-computing indicator lookups for locked representatives...
+  ADX(N=15) ready [3.8s]
+  DI(N=15) ready [3.6s]
+  ROC(N=60) ready [3.5s]
+  ATR(Ns=30,Nl=120) ready [3.6s]
+  VWAP(9:30_ny) ready [4.9s]
+
+Running 12 configs through walk-forward:
+  DEPLOY-QUAL        A solo ADX                            trades=1693  OOS median=$   1174  sharpe=  4.02  sign=7/7  total=$   4058  [3.0s]
+  DEPLOY-QUAL        A solo DI                             trades=1693  OOS median=$   1510  sharpe=  2.30  sign=7/7  total=$   7426  [2.8s]
+                 3G  A solo ROC                            trades=1693  OOS median=$    708  sharpe=  1.43  sign=6/7  total=$  -1430  [2.8s]
+                     A solo ATR                            trades=1693  OOS median=$    479  sharpe=  0.43  sign=5/7  total=$   3342  [2.8s]
+                     A solo VWAP                           trades=1693  OOS median=$    704  sharpe=  0.70  sign=4/7  total=$   1348  [2.8s]
+                     A LOO-ADX                             trades= 353  OOS median=$    221  sharpe=  0.48  sign=5/7  total=$   1296  [2.7s]
+  DEPLOY-QUAL        A LOO-DI                              trades= 312  OOS median=$    247  sharpe=  1.37  sign=6/7  total=$    940  [2.7s]
+  DEPLOY-QUAL        A LOO-ROC                             trades= 312  OOS median=$    300  sharpe=  1.15  sign=6/7  total=$   2116  [2.7s]
+  DEPLOY-QUAL        A LOO-ATR                             trades= 538  OOS median=$    658  sharpe=  2.00  sign=7/7  total=$   2790  [2.7s]
+                     A LOO-VWAP                            trades= 312  OOS median=$    281  sharpe=  0.78  sign=5/7  total=$    953  [2.7s]
+              4G     A Full5 unanimous                     trades= 255  OOS median=$    180  sharpe=  0.87  sign=6/7  total=$   1096  [2.7s]
+  DEPLOY-QUAL        B ADX∧DI unanimous                    trades= 949  OOS median=$   1082  sharpe=  5.32  sign=7/7  total=$   5803  [2.8s]
+Wrote /Users/hashim/Desktop/MNQ-Strategy/results/archive/composite_20260512/report.md
+
+Total elapsed: 0.9 min
+Artifacts: /Users/hashim/Desktop/MNQ-Strategy/results/archive/composite_20260512
