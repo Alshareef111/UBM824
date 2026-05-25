@@ -31,7 +31,7 @@ METADATA_JSON = RAW_DIR / "metadata.json"
 CONDITION_JSON = RAW_DIR / "condition.json"
 
 # Processed data files
-BARS_PARQUET = PROCESSED_DIR / "mnq_adjusted_1m.parquet"
+BARS_PARQUET = PROCESSED_DIR / "mnq_unadjusted_1m.parquet"
 ROLLS_PARQUET = PROCESSED_DIR / "rolls.parquet"
 ORB_TABLE_PARQUET = PROCESSED_DIR / "orb_table.parquet"
 ORB_EXCLUDED_PARQUET = PROCESSED_DIR / "orb_excluded.parquet"
