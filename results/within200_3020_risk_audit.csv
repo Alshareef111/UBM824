@@ -1,0 +1,41 @@
+metric,value
+config,within_200 / g7 / m2 / stop=30 / target=20 / Model A / slip=0.5 / RT_cost=$2.0
+trades_total,1394
+net_total_$,19690.0
+max_dd_$,-455.0
+max_dd_pct_of_$50k_init,-0.91
+max_dd_trough_date,2020-07-10
+max_dd_start_date,2020-06-11
+max_dd_recovery_date,2020-09-21
+max_dd_recovery_days,72
+longest_dd_duration_days,101
+longest_dd_start_date,2020-06-12
+longest_dd_end_date,2020-09-21
+longest_dd_n_trades,52
+longest_dd_depth_$,-455.0
+pct_calendar_underwater,55.2
+pct_trading_days_underwater,55.56
+n_months,75
+pct_positive_months,89.33
+best_month,2023-03 ($+851)
+worst_month,2024-01 ($-179)
+worst_rolling_3m_$,-69.0
+worst_rolling_3m_end,2020-08
+trade_pnl_mean_$,14.12
+trade_pnl_median_$,37.0
+trade_pnl_skew,-1.309
+trade_pnl_excess_kurt,-0.264
+worst_single_loss_$,-64.0
+worst_single_loss_date,2020-03-10
+worst_losing_trade_streak,5
+worst_losing_trade_streak_dates,2020-12-24 → 2020-12-31
+worst_losing_trade_streak_$,-272.0
+worst_losing_day_streak,5
+worst_losing_day_streak_dates,2020-12-24 → 2020-12-31
+dark_streak_longest_sessions,14
+dark_streak_longest_dates,2022-05-06 → 2022-05-25
+dark_streak_current_sessions,7
+dark_streak_current_dates,2026-04-30 → 2026-05-08
+dark_streaks_count,71
+dark_streak_mean_length,3.03
+dark_streak_p95_length,10
