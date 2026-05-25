@@ -61,11 +61,22 @@ def generate_signals(bars, candidates,
     short_entries = pd.Series(False, index=idx)
     entry_prices = pd.Series(np.nan, index=idx)
 
-    for session in candidates["session_date"].unique():
-        day_cands = candidates[candidates["session_date"] == session]
-        day_bars = bars[bars["session_date"] == session]
-        if day_bars.empty:
+    # Precompute session_date -> positional row indices once. The previous
+    # form ran `candidates[candidates["session_date"] == s]` and
+    # `bars[bars["session_date"] == s]` per session — both scanned the full
+    # object-dtype column through pandas' comp_method_OBJECT_ARRAY
+    # (~22ms/call × 2 × 1394 sessions ≈ 62s). groupby(sort=False).indices
+    # does the equivalent work once and preserves first-occurrence order,
+    # which matches the original `unique()` iteration order exactly.
+    cand_groups = candidates.groupby("session_date", sort=False).indices
+    bar_groups = bars.groupby("session_date", sort=False).indices
+
+    for session in cand_groups:
+        day_cands = candidates.iloc[cand_groups[session]]
+        bar_idx = bar_groups.get(session)
+        if bar_idx is None:
             continue
+        day_bars = bars.iloc[bar_idx]
         entry_bars = day_bars.between_time("09:45", entry_window_end,
                                            inclusive="both")
         if entry_bars.empty:
