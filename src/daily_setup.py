@@ -224,6 +224,11 @@ def _load():
     bars = load_processed_bars(BARS_PARQUET)
     or_levels = compute_opening_range(bars)
     or_close = compute_or_close(bars)
+    # Session indices may come back as Timestamps depending on how the parquet
+    # was generated; the rest of this tool treats sessions as datetime.date
+    # (see _parse_date), so normalize here for uniform date arithmetic.
+    or_levels.index = or_levels.index.map(lambda d: pd.Timestamp(d).date())
+    or_close.index = or_close.index.map(lambda d: pd.Timestamp(d).date())
     return or_levels, or_close
 
 
