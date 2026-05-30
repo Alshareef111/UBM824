@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import random
+import sys
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -339,6 +340,13 @@ def selftest() -> None:
 
 
 def main() -> None:
+    # Windows consoles default to cp1252, which can't encode the Δ/✓ glyphs
+    # this tool prints. Force UTF-8 output where the stream supports it.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
     ap = argparse.ArgumentParser(description="OR ±1 OCO daily-prep tool")
     ap.add_argument("--or-close", type=float, default=None,
                     help="OR_close (close of the 09:44 NY bar). Required for live mode.")
