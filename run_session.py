@@ -47,14 +47,14 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from xt_config import ACCOUNT, BASE, INSTRUMENT
+
 try:
     ET = ZoneInfo("America/New_York")
 except Exception:
     sys.exit("Missing tz database. On Windows run:  pip install tzdata")
 
-BASE = "https://app.crosstrade.io/v1/api"
-ACCOUNT = "Sim101"
-INSTRUMENT = "MNQ 06-26"        # confirm vs your NT8 instrument string + the mid-June roll
+# ACCOUNT / INSTRUMENT / BASE come from xt_config (single source of truth; see top import).
 
 # ET HH:MM label (AFTER UTC->ET conversion) of the bar whose CLOSE is the OR close.
 # _bar_et_label converts the feed's UTC stamp to ET, so this value is in ET and stays

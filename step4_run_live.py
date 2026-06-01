@@ -31,6 +31,7 @@ from datetime import datetime
 import requests
 
 from src.daily_setup import NY, STALE_DAYS, compute_setup   # (1) daily_setup entry point
+from xt_config import ACCOUNT, ATM_TEMPLATE, BASE, INSTRUMENT
 
 # Windows consoles default to cp1252, which can't encode the ± / − glyphs; force
 # UTF-8 where supported (same idiom as daily_setup.main).
@@ -42,10 +43,10 @@ for _stream in (sys.stdout, sys.stderr):
 ap = argparse.ArgumentParser(description="Place the morning OR ±1 OCO straddle")
 ap.add_argument("--or-close", type=float, required=True,
                 help="OR_close = close of the 09:44 NY bar (read off your platform at 09:45).")
-ap.add_argument("--account", default="Sim101")
-ap.add_argument("--instrument", default="MNQ 06-26",
+ap.add_argument("--account", default=ACCOUNT)
+ap.add_argument("--instrument", default=INSTRUMENT,
                 help="must match your NT8 instrument string + the mid-June roll.")
-ap.add_argument("--strategy", default="ORB 20-30",
+ap.add_argument("--strategy", default=ATM_TEMPLATE,
                 help="NT8 ATM template; attaches +20 target / −30 stop on fill.")
 ap.add_argument("--qty", type=int, default=1)
 ap.add_argument("--dry-run", action="store_true", help="preview the calls, send nothing")
@@ -54,7 +55,6 @@ args = ap.parse_args()
 ACCOUNT, INSTR, QTY, STRATEGY, DRY = (
     args.account, args.instrument, args.qty, args.strategy, args.dry_run)
 
-BASE = "https://app.crosstrade.io/v1/api"
 TIMEOUT = 10
 
 

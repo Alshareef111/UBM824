@@ -28,9 +28,8 @@ import sys
 import argparse
 import requests
 
-BASE = "https://app.crosstrade.io/v1/api"
-DEFAULT_ACCOUNT = "Sim101"
-DEFAULT_INSTRUMENT = "MNQ 06-26"   # confirm matches your NT8 instrument string + the mid-June roll
+from xt_config import ACCOUNT, BASE, INSTRUMENT
+
 TIMEOUT = 10
 
 
@@ -79,7 +78,7 @@ def verify(account, dry):
     print(f"positions      {p.status_code}  {p.text}")
 
 
-def force_flat(account=DEFAULT_ACCOUNT, instrument=DEFAULT_INSTRUMENT, dry=False):
+def force_flat(account=ACCOUNT, instrument=INSTRUMENT, dry=False):
     # flatten first (closes position + cancels its ATM bracket atomically),
     # then cancel mops up any standalone resting entry stop (the no-fill case).
     flatten(account, instrument, dry)
@@ -91,8 +90,8 @@ def force_flat(account=DEFAULT_ACCOUNT, instrument=DEFAULT_INSTRUMENT, dry=False
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Force-flat one account+instrument")
-    ap.add_argument("--account", default=DEFAULT_ACCOUNT)
-    ap.add_argument("--instrument", default=DEFAULT_INSTRUMENT)
+    ap.add_argument("--account", default=ACCOUNT)
+    ap.add_argument("--instrument", default=INSTRUMENT)
     ap.add_argument("--dry-run", action="store_true", help="preview calls, send nothing")
     a = ap.parse_args()
     force_flat(a.account, a.instrument, a.dry_run)
