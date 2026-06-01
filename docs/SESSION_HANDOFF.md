@@ -184,3 +184,51 @@ run_session.py        ET-timed scheduler / orchestrator (the "missing timer")
 - Live (09:45 ET, host clock synced, `CROSSTRADE_TOKEN` set): `python run_session.py`
 - Smoke test: `python run_session.py --test-in 10 --dry-run`
 - Override / replay: `python run_session.py --or-close <px> --test-in 1 --dry-run`
+
+---
+
+## PRE-LIVE CHECKS — session 2026-06-01 (cont.)
+
+### Feed alignment VERIFIED (resolves open item #2 above)
+`check_feed_alignment.py` (new, READ-ONLY: reads /market/bars + the parquet, no order
+endpoints) compares the live NT8 OR close against the backtest's `compute_or_close`
+for the SAME session dates present in both sources:
+
+```
+session     NT8 close   Databento   diff
+2026-05-25   29975.25    29975.25   0.00
+2026-05-26   29933.50    29933.50   0.00
+2026-05-27   29981.50    29981.50   0.00
+2026-05-28   29955.25    29955.25   0.00
+2026-05-29   30460.25    30460.25   0.00
+   mean 0.00 · spread 0.00 · n=5  ->  ALIGNED
+```
+
+- **Scale**: Panama offset is exactly **0** — the parquet's anchor IS the current front
+  contract, so the raw NT8 OR close feeds the within_200 gate (Panama-adjusted cluster
+  centers) with no remap. The earlier 47-pt "gap" was just cross-session price drift
+  (live Mon vs Databento's prior Fri), not an offset.
+- **Period**: `OR_BAR_LABEL="09:45"` selects the identical bar `compute_or_close` uses —
+  an off-by-one would have shown varying nonzero diffs. Calibration confirmed against
+  the backtest itself.
+- **Re-run after the June roll / any parquet regen**: `python check_feed_alignment.py`.
+  A nonzero or varying diff there = stop and investigate before arming.
+
+### INSTRUMENT centralized — roll footgun killed (Part 2)
+New `xt_config.py` (repo root) is the single source of truth for `ACCOUNT`,
+`INSTRUMENT`, `BASE`, `ATM_TEMPLATE`. `run_session.py`, `step4_run_live.py`, and
+`force_flat.py` now import from it (verified: grep finds no config literals in their
+code; dry regressions unchanged — BUY 25115.50 / SELL 25113.50; force_flat targets
+Sim101 / MNQ 06-26).
+
+- **The June roll is now a ONE-LINE change**: `INSTRUMENT` in `xt_config.py`
+  (`MNQ 06-26` → `MNQ 09-26`). No more risk of run_session arming 09-26 while
+  force_flat flattens 06-26.
+- Out of scope (still carry their own literals, by design): the manual probes
+  `xt_auth_check.py` / `xt_test_order.py` / `xt_bracket_test.py`, and the tick-data
+  filename `MNQ 06-26.LastT.txt` in `src/paths.py` (backtest/data infra, not config).
+
+### Updated open items before fully-unattended live
+1. **Holiday calendar** — still outstanding (run_session weekday-guard only).
+2. **Feed alignment** — RESOLVED above (re-verify after the roll / parquet regen).
+3. **Clock sync** — still recommended (`w32tm /resync`); feed ran ~1 min ahead of host.
