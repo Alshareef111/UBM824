@@ -121,3 +121,66 @@ Deployment prep. See `docs/DEPLOYMENT_PLAN.md`.
   the session log; the canonical pipeline is `src/vbt_backtest.py` for legacy 40/40 +
   the within_200 logic inlined in the heredocs (gate, custom slippage model). A
   `src.run_locked` CLI module would be a worthwhile cleanup but is not yet written.
+
+---
+
+## EXECUTION PIPELINE WIRED — session 2026-06-01
+
+The within_200 OR±1 OCO model above is now wired for live (paper) execution on
+CrossTrade / NinjaTrader 8 — account **Sim101**, instrument **MNQ 06-26**. Three
+composable scripts at repo root, each `--dry-run`-able (commits `77ba657`, `7b5942e`):
+
+```
+run_session.py        ET-timed scheduler / orchestrator (the "missing timer")
+  -> step4_run_live.py   gate (BOTH only) + place the OCO straddle
+  -> force_flat.py       11:30 ET flatten + cancel residual working orders
+```
+
+- **run_session.py** — arms, sleeps on the ET wall clock to 09:45:02, fetches the OR
+  close, hands it to step4, then sleeps to 11:30 and runs force_flat. No signal logic
+  reimplemented; it shells out using the same venv (`sys.executable`). Flags:
+  `--test-in N` (entry N s from now, then flat), `--dry-run`, `--flat-now`,
+  `--skip-flat`, `--or-close X` (override, skip the fetch).
+- **step4_run_live.py** — calls `daily_setup.compute_setup(or_close)` and places the
+  straddle (BUY-stop @ OR+1 / SELL-stop @ OR−1, shared ocoId, ATM "ORB 20-30") **only
+  when category == BOTH**. LONG-ONLY / SHORT-ONLY (paper-only) and NEITHER stand down.
+  Guards: stale-data refusal, one-sided-fill abort.
+- **force_flat.py** — POST /positions/flatten, then /orders/cancel, then verify flat.
+
+### OR-close source + calibration (CALIBRATED 2026-06-01)
+- Default: `POST /v1/api/market/bars` (the **NT8 feed**, not Databento) → read the OR
+  bar's CLOSE. Bar stamps are **UTC** (`...Z`, .NET 100-ns fraction); `_bar_et_label`
+  converts UTC→ET so the match is **DST-proof** (no twice-a-year re-tuning).
+- **`OR_BAR_LABEL = "09:45"`** — calibrated empirically: the 09:30 cash-open volume
+  spike (≈4.8k → 15k) lands on the **09:31** ET label, i.e. the feed is
+  **close-stamped**, so the 09:44 OR period (close @ 09:45:00) reads ET `09:45`.
+  Verified: `find_or_close` returns the 09:45 bar (close 30413.0 on 2026-06-01).
+- One-time; re-check only on feed/provider change. The auto-fetch uses `limit=30`, so
+  the OR bar is only in-window near 09:45 (real runs) — off-hours tests need `--or-close`.
+
+### OPEN ITEMS before fully-unattended live
+1. **Holiday calendar.** run_session has a **weekday guard only** — it will arm on
+   NYSE/CME holidays. Add a calendar (e.g. `pandas_market_calendars` XNYS) first.
+2. **Feed alignment (raw NT8 vs Panama Databento).** The live OR close is a **raw**
+   market price from /market/bars, but `daily_setup`'s cluster centers come from the
+   **Panama back-adjusted** Databento series, and the within_200 gate compares the two
+   on an ABSOLUTE basis. Spot-check 2026-06-01: NT8 raw ≈ 30413 vs Databento Panama
+   (2026-05-29) ≈ 30460 — same regime, offset ≈ 0 as expected for the front/anchor
+   contract. **Re-confirm after every parquet regen and after the mid-June MNQ roll**
+   (06-26 → 09-26); a nonzero offset would silently corrupt both the gate and the
+   BUY/SELL trigger levels.
+3. **Clock sync (observed).** The feed's latest bar read ~1 min ahead of the laptop
+   clock this session. Sync the host clock (`w32tm /resync`) before unattended live so
+   09:45/11:30 fire on time and `BAR_SETTLE_SECS=2` reliably catches a settled bar. A
+   fast host clock would fire entry before the OR bar settles → fail-safe no-trade
+   (safe), not a bad fill.
+
+### Verified this session (all dry-run, no orders, Sim101)
+- step4 via run_session override → BUY @ 25115.50 / SELL @ 25113.50, ocoId `orb-<today>`
+- live /market/bars fetch → correct UTC→ET column; off-window fail-safe stood down
+- `py_compile` clean on all pipeline scripts; `daily_setup --selftest` 5/5
+
+### Run
+- Live (09:45 ET, host clock synced, `CROSSTRADE_TOKEN` set): `python run_session.py`
+- Smoke test: `python run_session.py --test-in 10 --dry-run`
+- Override / replay: `python run_session.py --or-close <px> --test-in 1 --dry-run`
