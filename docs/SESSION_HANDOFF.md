@@ -232,3 +232,44 @@ Sim101 / MNQ 06-26).
 1. **Holiday calendar** — still outstanding (run_session weekday-guard only).
 2. **Feed alignment** — RESOLVED above (re-verify after the roll / parquet regen).
 3. **Clock sync** — still recommended (`w32tm /resync`); feed ran ~1 min ahead of host.
+
+---
+
+## EXECUTION LAYER VALIDATED (live, market open) — session 2026-06-01 (cont.)
+
+Live order-mechanics test (`mechtest.py`; arbitrary prices, execution layer only, step4
+gate bypassed) to validate what the weekend (no feed) could not.
+
+### Result: PASS end-to-end on DEMO6201782
+`place -> Working -> fill -> position -> ATM 20/30 attach -> OCO cancel -> force_flat -> flat`
+
+- Both entry stops reached **Working** (the weekend only reached Submitted).
+- 1-pt straddle filled instantly: SELL-stop filled -> **Short 1 @ 30546.25**.
+- ATM `ORB 20-30` attached exactly: target `Limit @ entry−20` (30526.25), stop
+  `StopMarket @ entry+30` (30576.25).
+- Opposite BUY entry -> **Cancelled** (OCO worked; clean single fill).
+- `force_flat.py` **actually closed** the Short and cancelled the residual bracket ->
+  `orders(active)=[]`, `positions=[]`.
+
+### Routing finding: Sim101 does NOT route; DEMO6201782 does
+- `Sim101` (NT8 internal sim) returned `400 "Account 'Sim101' not connected"` on
+  /orders/place even though `/accounts` lists it `Enabled` — NT8's internal sim wasn't
+  bridged for order routing.
+- `DEMO6201782` (broker demo, live data) routed + filled cleanly.
+- **`xt_config.ACCOUNT` is now `DEMO6201782`** — the live / forward-test target (a broker
+  demo with live data is also a more realistic forward-test than NT8's internal sim).
+
+### Caveat: "Enabled" and a force_flat 200 are NOT connection proof
+CrossTrade serves `/accounts`, `/positions`, `/orders/cancel`, `/positions/flatten` from
+cloud state and returns **200 even with no NT8 connected** (proven: Sim101 disconnected ->
+place 400, but flatten/positions 200 empty). So:
+- `Enabled` in `/accounts` ≠ connected-for-routing.
+- A `force_flat` 200 with **empty** `closedPositions`/`orderIds` is a no-op, NOT proof a
+  real position closed. Only non-empty results (as on DEMO6201782) confirm a real flatten.
+- Before trusting the unattended path: confirm a live placement reaches **Working** (or NT8
+  Control Center shows connected). The NT8 Flatten button / broker-side bracket is the true backstop.
+
+### Tooling
+`mechtest.py` (repo root) is the reusable execution-layer smoke test:
+`python mechtest.py` then `python force_flat.py`. Re-run after the roll, after any
+reconnect, or before arming.
