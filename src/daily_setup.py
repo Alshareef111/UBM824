@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -239,13 +240,63 @@ def _parse_date(s: str) -> date:
 # ─── Modes ─────────────────────────────────────────────────────────────────
 
 
-def run_live(or_close: float) -> None:
+@dataclass(frozen=True)
+class Setup:
+    """Machine-readable twin of what ``render`` prints for one live session.
+
+    The live order path (``step4_run_live.py``) consumes these fields directly,
+    so what the operator SEES in daily_setup is exactly what gets TRADED.
+    """
+    or_close: float            # close of the 09:44 NY bar (operator-supplied live)
+    category: str              # BOTH / LONG-ONLY / SHORT-ONLY / NEITHER
+    long_eligible: bool
+    short_eligible: bool
+    or_plus_1: float           # LONG  buy-stop  trigger = OR_close + ENTRY_OFFSET
+    or_minus_1: float          # SHORT sell-stop trigger = OR_close − ENTRY_OFFSET
+    last_session: date         # newest session in the data (staleness check)
+    spec: dict                 # order_spec(): entry/target/stop for both sides
+
+    @property
+    def tradeable(self) -> bool:
+        """Live-tradeable ⇔ BOTH sides armed.
+
+        daily_setup classifies LONG-ONLY / SHORT-ONLY as PAPER ONLY (negative /
+        flat historical expectancy) and NEITHER as no-trade; only the both-armed
+        straddle (~80% WR, PF 2.4 historically) is approved for a live account.
+        A both-sided straddle is also the only setup the step4 placer expresses —
+        it always rests a buy-stop AND a sell-stop — so this gate must be BOTH.
+        """
+        return self.category == "BOTH"
+
+
+def compute_setup(or_close: float) -> Setup:
+    """Live OR ±1 OCO setup for *today*, off the operator-supplied 09:44 OR close.
+
+    Reuses the exact production live path (``centers_for_today`` → today's OR is
+    never in its own 200-session pool), so this structured result matches what
+    ``render`` prints. ``or_plus_1`` / ``or_minus_1`` are read back out of
+    ``order_spec`` so the trigger prices stay single-sourced.
+    """
     or_levels, _ = _load()
     centers, last_session = centers_for_today(or_levels)
     le, se = classify(centers, or_close)
-    cat = category(le, se)
+    spec = order_spec(or_close)
+    return Setup(
+        or_close=float(or_close),
+        category=category(le, se),
+        long_eligible=le,
+        short_eligible=se,
+        or_plus_1=spec["long"]["entry"],
+        or_minus_1=spec["short"]["entry"],
+        last_session=last_session,
+        spec=spec,
+    )
+
+
+def run_live(or_close: float) -> None:
+    s = compute_setup(or_close)
     today = datetime.now(NY).date()
-    print(render(or_close, cat, today, last_session, is_live=True))
+    print(render(s.or_close, s.category, today, s.last_session, is_live=True))
 
 
 def _evaluate(or_levels, or_close_series, pool, when: date, or_close_override):
